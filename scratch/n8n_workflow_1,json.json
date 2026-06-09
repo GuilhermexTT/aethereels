@@ -1,0 +1,498 @@
+{
+  "name": "ReelsFlow - Pipeline de Geração e Renderização Computacional",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "v1/video/create",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "ae5b41cf-5d2a-4db3-90be-d6b7b25e1101",
+      "name": "Next.js Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        100,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = process.env.REELSFLOW_SIGNATURE_SECRET || 'sua-chave-secreta-para-assinatura-hmac-aqui';\n\nconst webhookData = $input.first().json;\nconst headers = webhookData.headers || {};\nconst body = webhookData.body || {};\nconst signature = headers['x-reelsflow-signature'] || headers['X-ReelsFlow-Signature'];\n\nif (!signature) {\n  throw new Error('Cabeçalho X-ReelsFlow-Signature ausente!');\n}\n\n// O Next.js envia o corpo como string JSON bruta compacta\nconst payloadStr = JSON.stringify(body);\nconst computedHmac = crypto.createHmac('sha256', secret).update(payloadStr).digest('hex');\n\nif (computedHmac !== signature) {\n  throw new Error('Assinatura HMAC inválida!');\n}\n\n// 1. Assinatura para 'scripting'\nconst scriptingPayload = {\n  job_id: body.job_id,\n  status: 'scripting',\n  user_id: body.user_id\n};\nconst scriptingSignature = crypto.createHmac('sha256', secret).update(JSON.stringify(scriptingPayload)).digest('hex');\n\n// 2. Assinatura para 'rendering'\nconst renderingPayload = {\n  job_id: body.job_id,\n  status: 'rendering',\n  user_id: body.user_id\n};\nconst renderingSignature = crypto.createHmac('sha256', secret).update(JSON.stringify(renderingPayload)).digest('hex');\n\nreturn [{\n  json: {\n    job_id: body.job_id,\n    prompt_input: body.prompt_input,\n    user_id: body.user_id,\n    scripting: {\n      payload: scriptingPayload,\n      signature: scriptingSignature\n    },\n    rendering: {\n      payload: renderingPayload,\n      signature: renderingSignature\n    }\n  }\n}];"
+      },
+      "id": "bc3451e0-6b1f-4ea2-8fb1-c5db1145b202",
+      "name": "Verify HMAC Signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        300,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.NEXT_PUBLIC_API_URL || \"http://localhost:3000\"}}/api/webhooks/n8n-callback",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-ReelsFlow-Signature",
+              "value": "={{$json.scripting.signature}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"job_id\": \"{{$json.scripting.payload.job_id}}\",\n  \"status\": \"scripting\",\n  \"user_id\": \"{{$json.scripting.payload.user_id}}\"\n}",
+        "options": {}
+      },
+      "id": "cd4562f1-7c2f-4fb3-9fc2-d6eb1156c303",
+      "name": "Update Next.js -> scripting",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.OPENAI_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o\",\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Você é um gerador de roteiros de alta retenção para Reels e TikTok. Escreva um roteiro estruturado no formato JSON com duas chaves:\\n1. 'subtitles': um array de objetos contendo 'text' (texto falado) e 'duration' (duração aproximada em segundos).\\n2. 'b_roll_tags': um array de strings com palavras-chave em inglês para buscar mídias de fundo (ex: 'futuristic AI', 'coding matrix', 'cinematic tech').\\nRetorne APENAS o JSON válido, sem markdown ou explicações.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{$node[\\\"Verify HMAC Signature\\\"].json.prompt_input}}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "de5673a2-8d3f-40c4-ad03-e7fc2267d404",
+      "name": "Generate Script (OpenAI)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const contentStr = $input.first().json.choices[0].message.content;\nconst parsed = JSON.parse(contentStr);\nreturn [{\n  json: {\n    script: parsed\n  }\n}];"
+      },
+      "id": "ef6784b3-9e4f-41d5-be14-f8ad3378e505",
+      "name": "Parse & Extract JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        900,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.elevenlabs.io/v1/text-to-speech/{{$env.ELEVENLABS_VOICE_ID || \"21m00Tcm4TlvDq8ikWAM\"}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "={{$env.ELEVENLABS_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"{{$json.script.subtitles.map(s => s.text).join(' ')}}\",\n  \"model_id\": \"eleven_multilingual_v2\"\n}",
+        "responseFormat": "file",
+        "options": {}
+      },
+      "id": "f07895c4-0f5f-42d6-cf25-09be4489f606",
+      "name": "Generate Audio (ElevenLabs)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://{{$env.R2_ACCOUNT_ID}}.r2.cloudflarestorage.com/{{$env.R2_BUCKET_NAME || \"reelsflow\"}}/audio/{{$node[\"Verify HMAC Signature\"].json.job_id}}.mp3",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.R2_UPLOAD_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "audio/mpeg"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "binaryData": true,
+          "binaryPropertyName": "data"
+        },
+        "options": {}
+      },
+      "id": "fa8906d5-1a6f-43e7-df36-1ac25590a707",
+      "name": "Upload Audio to R2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1300,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const script = $node[\"Parse & Extract JSON\"].json.script;\nconst tags = script.b_roll_tags || [];\nconst pexelsKey = process.env.PEXELS_API_KEY || 'sua-chave-pexels-aqui';\n\nconst videoUrls = [];\n\nfor (const tag of tags) {\n  try {\n    const response = await fetch(`https://api.pexels.com/v1/videos/search?query=${encodeURIComponent(tag)}&orientation=portrait&per_page=3`, {\n      headers: {\n        'Authorization': pexelsKey\n      }\n    });\n    if (response.ok) {\n      const data = await response.json();\n      if (data.videos && data.videos.length > 0) {\n        const video = data.videos[0];\n        const file = video.video_files.find(f => f.file_type === 'video/mp4' || f.link.includes('.mp4'));\n        if (file) {\n          videoUrls.push(file.link);\n        }\n      }\n    }\n  } catch (err) {\n    console.error(`Erro ao buscar vídeo do Pexels para tag \"${tag}\":`, err.message);\n  }\n}\n\nif (videoUrls.length === 0) {\n  videoUrls.push('https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-background-1611-large.mp4');\n}\n\nreturn [{\n  json: {\n    video_urls: videoUrls\n  }\n}];"
+      },
+      "id": "ab9017e6-2b7f-44f8-ef47-2bd36601b808",
+      "name": "Fetch Pexels Videos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.NEXT_PUBLIC_API_URL || \"http://localhost:3000\"}}/api/webhooks/n8n-callback",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-ReelsFlow-Signature",
+              "value": "={{$node[\"Verify HMAC Signature\"].json.rendering.signature}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"job_id\": \"{{$node[\"Verify HMAC Signature\"].json.rendering.payload.job_id}}\",\n  \"status\": \"rendering\",\n  \"user_id\": \"{{$node[\"Verify HMAC Signature\"].json.rendering.payload.user_id}}\"\n}",
+        "options": {}
+      },
+      "id": "bc0128f7-3c8f-45fa-fe58-3ce47712c909",
+      "name": "Update Next.js -> rendering",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1700,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.REMOTION_ENGINE_URL}}/render",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.REMOTION_SECRET_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"job_id\": \"{{$node[\"Verify HMAC Signature\"].json.job_id}}\",\n  \"subtitles\": {{$node[\"Parse & Extract JSON\"].json.script.subtitles}},\n  \"audio_url\": \"https://{{$env.R2_ACCOUNT_ID}}.r2.cloudflarestorage.com/{{$env.R2_BUCKET_NAME || \\\"reelsflow\\\"}}/audio/{{$node[\\"Verify HMAC Signature\\\"].json.job_id}}.mp3\",\n  \"video_urls\": {{$json.video_urls}},\n  \"callback_url\": \"{{$env.N8N_CALLBACK_URL}}/v1/video/callback\"\n}",
+        "options": {}
+      },
+      "id": "cd1239a8-4d9f-46ab-ae69-4df58823da10",
+      "name": "Trigger Remotion Render",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1900,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "v1/video/callback",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "de234ab9-5eaf-47bc-bf7a-5eg69934eb11",
+      "name": "Remotion Callback Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        100,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = process.env.REELSFLOW_SIGNATURE_SECRET || 'sua-chave-secreta-para-assinatura-hmac-aqui';\n\nconst body = $input.first().json.body || {};\n\nconst readyPayload = {\n  job_id: body.job_id,\n  status: 'ready',\n  video_url: body.video_url\n};\n\nconst signature = crypto.createHmac('sha256', secret).update(JSON.stringify(readyPayload)).digest('hex');\n\nreturn [{\n  json: {\n    payload: readyPayload,\n    signature: signature\n  }\n}];"
+      },
+      "id": "ef345bc0-6fbf-48cd-cg8b-6fh70045fc12",
+      "name": "Sign 'ready' Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        300,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.NEXT_PUBLIC_API_URL || \"http://localhost:3000\"}}/api/webhooks/n8n-callback",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-ReelsFlow-Signature",
+              "value": "={{$json.signature}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"job_id\": \"{{$json.payload.job_id}}\",\n  \"status\": \"ready\",\n  \"video_url\": \"{{$json.payload.video_url}}\"\n}",
+        "options": {}
+      },
+      "id": "f0456cd1-7gcg-49de-dh9c-7gi81156gd13",
+      "name": "Update Next.js -> ready",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        450
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "ab123cd4-8hde-4ade-bca0-8hj92267he14",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        100,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = process.env.REELSFLOW_SIGNATURE_SECRET || 'sua-chave-secreta-para-assinatura-hmac-aqui';\n\nlet jobId = '00000000-0000-0000-0000-000000000000';\nlet userId = null;\nlet errorMessage = 'Falha genérica no processamento da automação do n8n.';\n\ntry {\n  const triggerData = $node[\"Verify HMAC Signature\"].json;\n  if (triggerData && triggerData.job_id) {\n    jobId = triggerData.job_id;\n    userId = triggerData.user_id;\n  }\n} catch (e) {\n  try {\n    const errorData = $input.first().json;\n    errorMessage = errorData.message || errorMessage;\n  } catch (err) {}\n}\n\nconst failedPayload = {\n  job_id: jobId,\n  status: 'failed',\n  error_message: errorMessage,\n  user_id: userId\n};\n\nconst signature = crypto.createHmac('sha256', secret).update(JSON.stringify(failedPayload)).digest('hex');\n\nreturn [{\n  json: {\n    payload: failedPayload,\n    signature: signature\n  }\n}];"
+      },
+      "id": "bc234de5-9ief-4bef-cab1-9ik03378if15",
+      "name": "Sign 'failed' Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        300,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.NEXT_PUBLIC_API_URL || \"http://localhost:3000\"}}/api/webhooks/n8n-callback",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-ReelsFlow-Signature",
+              "value": "={{$json.signature}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"job_id\": \"{{$json.payload.job_id}}\",\n  \"status\": \"failed\",\n  \"error_message\": \"{{$json.payload.error_message}}\",\n  \"user_id\": \"{{$json.payload.user_id}}\"\n}",
+        "options": {}
+      },
+      "id": "cd345ef6-0jfg-4cfg-dbc2-0jl14489jg16",
+      "name": "Update Next.js -> failed & refund",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        660
+      ]
+    }
+  ],
+  "connections": {
+    "Next.js Trigger": {
+      "main": [
+        [
+          {
+            "node": "Verify HMAC Signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify HMAC Signature": {
+      "main": [
+        [
+          {
+            "node": "Update Next.js -> scripting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Next.js -> scripting": {
+      "main": [
+        [
+          {
+            "node": "Generate Script (OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Script (OpenAI)": {
+      "main": [
+        [
+          {
+            "node": "Parse & Extract JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Extract JSON": {
+      "main": [
+        [
+          {
+            "node": "Generate Audio (ElevenLabs)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Audio (ElevenLabs)": {
+      "main": [
+        [
+          {
+            "node": "Upload Audio to R2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Audio to R2": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pexels Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Pexels Videos": {
+      "main": [
+        [
+          {
+            "node": "Update Next.js -> rendering",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Next.js -> rendering": {
+      "main": [
+        [
+          {
+            "node": "Trigger Remotion Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remotion Callback Trigger": {
+      "main": [
+        [
+          {
+            "node": "Sign 'ready' Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Sign 'failed' Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign 'failed' Status": {
+      "main": [
+        [
+          {
+            "node": "Update Next.js -> failed & refund",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign 'ready' Status": {
+      "main": [
+        [
+          {
+            "node": "Update Next.js -> ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "reelsflow-workflow-1"
+}
