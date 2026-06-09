@@ -5,25 +5,23 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('As variáveis de ambiente do Supabase (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY) não estão configuradas.');
-}
-
-/**
- * Cliente Supabase com privilégios administrativos (Service Role Key).
- * IGNORA as políticas de RLS e deve ser usado exclusivamente no servidor em rotas internas seguras (ex: callback do n8n).
- */
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || '', {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-  },
-});
+// Apenas inicializa o cliente Admin se as variáveis estiverem presentes (evita travar o build do Next.js/Vercel)
+export const supabaseAdmin = (supabaseUrl && supabaseServiceKey)
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+  : null as any;
 
 /**
  * Retorna um cliente Supabase associado ao token do usuário atual para respeitar o RLS.
  */
 export function getSupabaseUserClient(authToken?: string) {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('As variáveis de ambiente do Supabase (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY) não estão configuradas.');
+  }
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: false,
