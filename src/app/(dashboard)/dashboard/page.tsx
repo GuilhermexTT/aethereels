@@ -59,6 +59,10 @@ export default function CreationDashboard() {
   const [audioUrl, setAudioUrl] = useState('');
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
   const [isDynamicMode, setIsDynamicMode] = useState(false);
+  const [scriptData, setScriptData] = useState<any>(null);
+
+  // Log de diagnóstico no início da renderização do componente
+  console.log("DADOS DO SCRIPT_JSON:", scriptData);
 
   // Default subtitles and fallback videos
   const defaultSubtitles = [
@@ -352,6 +356,7 @@ export default function CreationDashboard() {
                 }
 
                 if (parsedScript && (parsedScript.audio_url || parsedScript.b_roll_videos || parsedScript.video_urls)) {
+                  setScriptData(parsedScript);
                   setIsDynamicMode(true);
                   setAudioUrl(parsedScript.audio_url || '');
 
@@ -366,14 +371,13 @@ export default function CreationDashboard() {
                   if (parsedScript.subtitles && parsedScript.subtitles.length > 0) {
                     let currentStart = 0;
                     const mapped = parsedScript.subtitles.map((sub: any) => {
-                      const duration = parseFloat(sub.duration) || 3;
-                      const start = currentStart;
-                      const end = currentStart + duration;
+                      const start = sub.start !== undefined ? parseFloat(sub.start) : (sub.start_time !== undefined ? parseFloat(sub.start_time) : currentStart);
+                      const end = sub.end !== undefined ? parseFloat(sub.end) : (sub.end_time !== undefined ? parseFloat(sub.end_time) : (start + (parseFloat(sub.duration) || 3)));
                       currentStart = end;
                       return {
                         start,
                         end,
-                        text: sub.text
+                        text: sub.text || sub.word || ''
                       };
                     });
                     setSubtitles(mapped);
@@ -383,6 +387,7 @@ export default function CreationDashboard() {
 
                   setVideoUrl('');
                 } else {
+                  setScriptData(null);
                   setIsDynamicMode(false);
                   setVideoUrl(updatedJob.video_url || '');
                   setSubtitles(defaultSubtitles);
@@ -493,6 +498,7 @@ export default function CreationDashboard() {
     setSubtitles(defaultSubtitles);
     setVideoState('ready');
     setIsPlaying(false);
+    setScriptData(null);
     // Insert mock values
     setPrompt('Crie um reels cinemático sobre alta performance e constância. Foco na jornada do astronauta no espaço profundo, luzes dramáticas de neon ciano e azul, com trilha sonora synthwave motivacional e locução profunda.');
     setLanguage('pt');
