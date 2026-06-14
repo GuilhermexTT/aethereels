@@ -113,6 +113,19 @@ export default function CreationDashboard() {
 
   const activeVideoIndex = isDynamicMode ? getActiveVideoIndex() : 0;
 
+  // Determinar a URL do vídeo a ser exibido no player único reativo
+  const getActiveVideoSrc = () => {
+    if (isDynamicMode && videoUrls.length > 0) {
+      const url = videoUrls[activeVideoIndex];
+      return typeof url === 'object' && url !== null 
+        ? (String((url as any).url || (url as any).link || '')) 
+        : String(url);
+    }
+    return videoUrl || "https://media.w3.org/2010/05/sintel/trailer_hd.mp4";
+  };
+
+  const activeVideoSrc = getActiveVideoSrc();
+
   // Keep track of current time in a ref to avoid recreating the animation frame loop on every tick
   const currentTimeRef = useRef(0);
 
@@ -180,38 +193,13 @@ export default function CreationDashboard() {
     return () => cancelAnimationFrame(animationFrameId);
   }, [isPlaying, isDynamicMode, totalDuration, subtitles, videoUrls]);
 
-  // Sync plays/pauses for multiple background video preloaded elements
+  // Garante que o vídeo único reativo continue tocando quando a cena (src) muda
   useEffect(() => {
-    if (!isDynamicMode) return;
-
-    if (isPlaying) {
-      const activeVid = videoRefs.current[activeVideoIndex];
-      if (activeVid) {
-        if (activeVid.paused) {
-          activeVid.currentTime = 0;
-        }
-        activeVid.play().catch(e => console.log('Video play failed:', e));
-      }
-      // Pause others
-      videoRefs.current.forEach((v, idx) => {
-        if (idx !== activeVideoIndex && v) {
-          v.pause();
-        }
-      });
-    } else {
-      // Pause all B-rolls
-      videoRefs.current.forEach(v => {
-        if (v) v.pause();
-      });
+    const video = videoRef.current;
+    if (isDynamicMode && isPlaying && video) {
+      video.play().catch(e => console.log('Erro ao tocar vídeo reativo:', e));
     }
-  }, [activeVideoIndex, isPlaying, isDynamicMode, videoUrls]);
-
-  // Clean spare references when videoUrls changes to avoid memory leaks
-  useEffect(() => {
-    if (videoRefs.current.length > videoUrls.length) {
-      videoRefs.current = videoRefs.current.slice(0, videoUrls.length);
-    }
-  }, [videoUrls]);
+  }, [activeVideoSrc, isPlaying, isDynamicMode]);
 
   // Compilation process simulator logs
   const stages = [
@@ -444,17 +432,16 @@ export default function CreationDashboard() {
 
   const togglePlay = () => {
     if (isDynamicMode) {
-      if (!audioRef.current) return;
+      const audio = audioRef.current;
+      const video = videoRef.current;
+      if (!audio) return;
       if (isPlaying) {
-        audioRef.current.pause();
-        videoRefs.current.forEach(v => v?.pause());
+        audio.pause();
+        if (video) video.pause();
         setIsPlaying(false);
       } else {
-        audioRef.current.play().catch(e => console.log('Audio play failed:', e));
-        const activeVid = videoRefs.current[activeVideoIndex];
-        if (activeVid) {
-          activeVid.play().catch(e => console.log('Video play failed:', e));
-        }
+        audio.play().catch(e => console.log('Audio play failed:', e));
+        if (video) video.play().catch(e => console.log('Video play failed:', e));
         setIsPlaying(true);
       }
     } else {
@@ -493,10 +480,10 @@ export default function CreationDashboard() {
     if (isDynamicMode && audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(e => console.log('Audio loop play failed:', e));
-      // Reset video times
-      videoRefs.current.forEach(v => {
-        if (v) v.currentTime = 0;
-      });
+      if (videoRef.current) {
+        videoRef.current.currentTime = 0;
+        videoRef.current.play().catch(e => console.log('Video loop play failed:', e));
+      }
     }
   };
 
@@ -903,65 +890,30 @@ export default function CreationDashboard() {
             {/* ESTADO 3: Ready (Video Player with synced captions) */}
             {videoState === 'ready' && (
               <div className="w-full h-full relative z-20 group/player flex flex-col justify-end">
-                {/* Mode 1: Static Video Player */}
-                {!isDynamicMode && (
-                  <video
-                    ref={videoRef}
+                {/* Single Reactive Video Player (Muted in dynamic mode as audio plays) */}
+                <video
+                  ref={videoRef}
+                  src={activeVideoSrc}
+                  onTimeUpdate={!isDynamicMode ? handleTimeUpdate : undefined}
+                  onLoadedMetadata={!isDynamicMode ? handleLoadedMetadata : undefined}
+                  onClick={togglePlay}
+                  loop
+                  playsInline
+                  muted={isDynamicMode}
+                  className="absolute inset-0 w-full h-full object-cover cursor-pointer bg-black"
+                />
+
+                {/* Master Audio Controller for Dynamic Mode */}
+                {isDynamicMode && (
+                  <audio
+                    ref={audioRef}
+                    src={audioUrl}
+                    preload="auto"
                     onTimeUpdate={handleTimeUpdate}
                     onLoadedMetadata={handleLoadedMetadata}
-                    onClick={togglePlay}
-                    loop
-                    playsInline
-                    src={videoUrl || "https://media.w3.org/2010/05/sintel/trailer_hd.mp4"}
-                    className="absolute inset-0 w-full h-full object-cover cursor-pointer bg-black"
+                    onEnded={handleAudioEnded}
+                    loop={false}
                   />
-                )}
-
-                {/* Mode 2: Dynamic Frontend Composition Player */}
-                {isDynamicMode && (
-                  <>
-                    {/* Audio timing master */}
-                    <audio
-                      ref={audioRef}
-                      src={audioUrl}
-                      preload="auto"
-                      onTimeUpdate={handleTimeUpdate}
-                      onLoadedMetadata={handleLoadedMetadata}
-                      onEnded={handleAudioEnded}
-                      loop={false}
-                    />
-
-                    {/* Preloaded video B-rolls layers */}
-                    {videoUrls.map((url, idx) => {
-                      const isActive = idx === activeVideoIndex;
-                      
-                      // Detecta se o link veio como objeto ou string pura do banco
-                      const videoSrc = typeof url === 'object' && url !== null 
-                        ? (String((url as unknown as Record<string, unknown>).url || (url as unknown as Record<string, unknown>).link || '')) 
-                        : String(url);
-
-                      // Se por algum motivo o link ainda estiver vazio, não renderiza a tag para não quebrar o player
-                      if (!videoSrc) return null;
-
-                      return (
-                        <video
-                          key={`${videoSrc}-${idx}`}
-                          ref={el => {
-                            videoRefs.current[idx] = el;
-                          }}
-                          src={videoSrc}
-                          onClick={togglePlay}
-                          preload="auto"
-                          onError={() => handleVideoError(idx)}
-                          className={`absolute inset-0 w-full h-full object-cover cursor-pointer bg-black transition-opacity duration-700 ${isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
-                            }`}
-                          muted
-                          playsInline
-                          loop
-                        />
-                      );
-                    })}
-                  </>
                 )}
 
                 {/* Subtitle Overlay (Strictly styled like Reels, centered black box with bold text) */}
