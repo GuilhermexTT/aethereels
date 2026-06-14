@@ -372,7 +372,7 @@ export default function CreationDashboard() {
 
                   const clips = (actualVideos && actualVideos.length > 0)
                     ? actualVideos
-                    : fallbackVideos;
+                    : (updatedJob.video_url ? [updatedJob.video_url] : fallbackVideos);
                   setVideoUrls(clips);
 
                   if (parsedScript.subtitles && parsedScript.subtitles.length > 0) {
