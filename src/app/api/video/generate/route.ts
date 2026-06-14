@@ -100,6 +100,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Garantir que existe um registro correspondente na tabela public.users para o usuário autenticado
+    const { data: existingProfile, error: profileError } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('Erro ao verificar perfil do usuário em public.users:', profileError);
+    }
+
+    if (!existingProfile) {
+      console.log(`🔧 [AUTH AUTO-SETUP] Perfil do usuário ${user.email} (${user.id}) não encontrado em public.users. Criando perfil com 1000 créditos...`);
+      const { error: insertError } = await supabaseAdmin
+        .from('users')
+        .insert({
+          id: user.id,
+          email: user.email,
+          credits_balance: 1000
+        });
+
+      if (insertError) {
+        console.error('Erro ao inserir perfil do usuário em public.users:', insertError);
+        return NextResponse.json(
+          { error: 'Falha ao inicializar o saldo de créditos do usuário.' },
+          { status: 500 }
+        );
+      }
+    }
+
     // 4. Invocar a RPC para debitar crédito de forma atômica (previne Race Conditions)
     // Se for em modo de desenvolvimento sem sessão ativa, usamos supabaseAdmin para bypassar RLS da RPC
     const supabaseClientToUse = (authError || !user || user.email === 'dev-reelsflow-user@example.com') 

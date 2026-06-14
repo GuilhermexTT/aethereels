@@ -283,11 +283,16 @@ export default function CreationDashboard() {
       const selectedLanguage = language === 'pt' ? 'Português' : language === 'en' ? 'Inglês' : 'Espanhol';
       const formattedPrompt = `${prompt.trim()} (Idioma: ${selectedLanguage}, Tom de voz: ${tone}, Duração: ${duration})`;
 
+      // Obter o token de acesso da sessão atual do Supabase
+      const { data: { session: activeSession } } = await supabase.auth.getSession();
+      const accessToken = activeSession?.access_token;
+
       // Chamar a API real do Next.js
       const response = await fetch('/api/video/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
         },
         body: JSON.stringify({ prompt_input: formattedPrompt }),
       });
