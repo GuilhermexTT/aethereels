@@ -260,10 +260,9 @@ export default function CreationDashboard() {
 
       const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-      // Em desenvolvimento local, se o usuário do frontend não estiver autenticado,
-      // realizamos o login automático para que o canal Realtime (que respeita RLS) possa receber as notificações.
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      // Verificar se o usuário está autenticado e o token está válido
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
         setLoadingLog('Autenticando sessão de testes...');
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: 'dev-reelsflow-user@example.com',
