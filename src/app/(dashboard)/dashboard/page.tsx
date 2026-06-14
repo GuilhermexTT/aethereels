@@ -68,6 +68,7 @@ export default function CreationDashboard() {
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const phoneContainerRef = useRef<HTMLDivElement>(null);
   const currentTimeRef = useRef(0);
+  const prevActiveVideoIndexRef = useRef<number>(0);
 
   useEffect(() => {
     currentTimeRef.current = currentTime;
@@ -137,12 +138,18 @@ export default function CreationDashboard() {
   useEffect(() => {
     if (!isDynamicMode) return;
     
-    videoRefs.current.forEach((video, idx) => {
+    const prevActiveIndex = prevActiveVideoIndexRef.current;
+    prevActiveVideoIndexRef.current = activeVideoIndex;
+    
+    for (let i = 0; i < videoUrls.length; i++) {
+      const video = videoRefs.current[i];
       if (video) {
-        if (idx === activeVideoIndex) {
+        if (i === activeVideoIndex) {
           if (isPlaying) {
-            // Se mudou de cena, reinicia o currentTime do novo clipe para iniciar do início da cena
-            video.currentTime = 0;
+            // Só reinicia o tempo se for uma transição de cena (troca de índice do clipe)
+            if (i !== prevActiveIndex) {
+              video.currentTime = 0;
+            }
             video.play().catch(() => {});
           } else {
             video.pause();
@@ -152,8 +159,8 @@ export default function CreationDashboard() {
           video.currentTime = 0;
         }
       }
-    });
-  }, [activeVideoIndex, isPlaying, isDynamicMode]);
+    }
+  }, [activeVideoIndex, isPlaying, isDynamicMode, videoUrls.length]);
 
   const handleTimeUpdate = (e: React.SyntheticEvent<HTMLMediaElement>) => {
     const time = e.currentTarget.currentTime;
@@ -280,11 +287,21 @@ export default function CreationDashboard() {
                 setVideoUrls(parsedScript.video_urls || [updatedJob.video_url]);
 
                 if (parsedScript.subtitles && parsedScript.subtitles.length > 0) {
-                  const mapped = parsedScript.subtitles.map((sub: any) => ({
-                    start: parseFloat(sub.start || sub.start_time || 0),
-                    end: parseFloat(sub.end || sub.end_time || 3),
-                    text: sub.text || sub.word || ''
-                  }));
+                  let currentStart = 0;
+                  const mapped = parsedScript.subtitles.map((sub: any) => {
+                    const start = sub.start !== undefined 
+                      ? parseFloat(sub.start) 
+                      : (sub.start_time !== undefined ? parseFloat(sub.start_time) : currentStart);
+                    const end = sub.end !== undefined 
+                      ? parseFloat(sub.end) 
+                      : (sub.end_time !== undefined ? parseFloat(sub.end_time) : (start + (parseFloat(sub.duration) || 3)));
+                    currentStart = end;
+                    return {
+                      start,
+                      end,
+                      text: sub.text || sub.word || ''
+                    };
+                  });
                   setSubtitles(mapped);
                 }
               } else {
@@ -378,10 +395,15 @@ export default function CreationDashboard() {
                         key={idx}
                         ref={(el) => { videoRefs.current[idx] = el; }}
                         src={videoSrc}
-                        style={{ display: idx === activeVideoIndex ? 'block' : 'none' }}
+                        preload="auto"
+                        style={{
+                          opacity: idx === activeVideoIndex ? 1 : 0,
+                          pointerEvents: idx === activeVideoIndex ? 'auto' : 'none',
+                          transition: 'opacity 0.2s ease-in-out'
+                        }}
                         loop
                         playsInline
-                        muted
+                        muted={true}
                         className="absolute inset-0 w-full h-full object-cover bg-black"
                       />
                     );
