@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { verifyHmacSignature } from '@/lib/crypto';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    // 1. Ler o corpo bruto da requisição como texto para validação HMAC
-    const rawBody = await request.text();
-    const signature = request.headers.get('X-ReelsFlow-Signature') || '';
+    // 1. Ler o corpo bruto da requisição como texto para validação HMAC usando clone()
+    const rawBody = await req.clone().text();
+    const signature = req.headers.get('X-ReelsFlow-Signature') || '';
 
     // 2. Validar assinatura HMAC-SHA256 para autenticação segura
     const isValid = verifyHmacSignature(rawBody, signature);
@@ -19,32 +19,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-
-    // 3. Decodificar o JSON após a validação
-    let payload;
+    // 3. Fazer o parse correto do body
+    let body: {
+      job_id?: string;
+      status?: string;
+      audio_url?: string;
+      video_urls?: string[];
+      subtitles?: unknown[];
+      b_roll_videos?: string[];
+      video_url?: string;
+      error_message?: string;
+      user_id?: string;
+    };
     try {
-      payload = JSON.parse(rawBody);
-      console.log('📥 [n8n-callback] Payload recebido no webhook:', JSON.stringify(payload, null, 2));
-    } catch (err) {
+      body = await req.json();
+      console.log('📥 [n8n-callback] Payload recebido no webhook:', JSON.stringify(body, null, 2));
+    } catch {
       return NextResponse.json(
         { error: 'Corpo da requisição inválido. Esperado um JSON válido.' },
         { status: 400 }
       );
     }
 
+    // 4. Extrair os dados direto da raiz do body
     const { 
       job_id, 
       status, 
-      video_url, 
-      error_message, 
-      user_id,
-      audio_url,
+      audio_url, 
+      video_urls, 
+      subtitles, 
       b_roll_videos,
-      video_urls,
-      subtitles
-    } = payload;
-    console.log(`📥 [n8n-callback] Campos extraídos: job_id=${job_id}, status=${status}, video_url=${video_url}`);
+      video_url,
+      error_message, 
+      user_id 
+    } = body;
 
+    console.log(`📥 [n8n-callback] Campos extraídos: job_id=${job_id}, status=${status}, video_url=${video_url}`);
 
     if (!job_id || !status) {
       return NextResponse.json(
@@ -64,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`Recebido callback do n8n para o job ${job_id} com status: ${status}`);
 
-    // 4. Buscar o job de vídeo correspondente no banco de dados para segurança e mesclagem de dados
+    // 5. Buscar o job de vídeo correspondente no banco de dados
     const { data: jobData, error: fetchError } = await supabaseAdmin
       .from('video_jobs')
       .select('user_id, script_json')
@@ -79,7 +89,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. Se o status for 'failed', executa a política de reembolso
+    // 6. Se o status for 'failed', executa a política de reembolso
     if (status === 'failed') {
       const finalUserId = user_id || jobData.user_id;
 
@@ -115,28 +125,33 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 6. Atualizar o status do job e dados adicionais
-    const updateData: Record<string, any> = { status };
+    // 7. Atualizar o status do job e dados adicionais
+    const updateData: {
+      status: string;
+      video_url?: string;
+      script_json?: Record<string, unknown>;
+    } = { status };
+
     if (video_url) {
       updateData.video_url = video_url;
     }
 
     // Recuperar e fazer parse do script_json atual
-    let currentScript: any = {};
+    let currentScript: Record<string, unknown> = {};
     if (jobData.script_json) {
       try {
         currentScript = typeof jobData.script_json === 'string'
           ? JSON.parse(jobData.script_json)
-          : jobData.script_json;
+          : (jobData.script_json as Record<string, unknown>);
       } catch (e) {
         console.error('Erro ao fazer parse do script_json existente:', e);
       }
     }
 
-    // Mesclar os novos dados se enviados no payload
-    const vids = video_urls || b_roll_videos;
-
     const newScriptData = { ...currentScript };
+
+    // Mesclar os novos dados se enviados no payload (sem fallback de URLs fictícias)
+    const vids = video_urls || b_roll_videos;
 
     if (vids !== undefined) {
       newScriptData.video_urls = Array.isArray(vids) ? vids : [vids];
@@ -145,15 +160,15 @@ export async function POST(request: NextRequest) {
       newScriptData.subtitles = Array.isArray(subtitles) ? subtitles : [];
     }
     if (audio_url !== undefined) {
-      newScriptData.audio_url = audio_url || "";
+      newScriptData.audio_url = audio_url;
     }
 
     // Salvar o payload inteiro recebido nesta requisição para fins de depuração
-    newScriptData.debug_last_payload = payload;
+    newScriptData.debug_last_payload = body as Record<string, unknown>;
 
     updateData.script_json = newScriptData;
 
-    // Como n8n atualiza em lote, usamos supabaseAdmin que ignora RLS
+    // Atualizar no banco de dados usando supabaseAdmin
     const { error: updateError } = await supabaseAdmin
       .from('video_jobs')
       .update(updateData)
@@ -167,17 +182,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // As atualizações salvas no banco são transmitidas automaticamente via Supabase Realtime 
-    // se a tabela 'video_jobs' estiver adicionada na publicação do Realtime.
-
     return NextResponse.json({
       message: `Status do job atualizado com sucesso para ${status}.`,
       job_id,
       status
     });
 
-  } catch (error: any) {
-    console.error('Erro geral no webhook /api/webhooks/n8n-callback:', error);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('Erro geral no webhook /api/webhooks/n8n-callback:', errorMsg);
     return NextResponse.json(
       { error: 'Erro interno do servidor.' },
       { status: 500 }
