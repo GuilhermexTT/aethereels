@@ -19,10 +19,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+
     // 3. Decodificar o JSON após a validação
     let payload;
     try {
       payload = JSON.parse(rawBody);
+      console.log('📥 [n8n-callback] Payload recebido no webhook:', JSON.stringify(payload, null, 2));
     } catch (err) {
       return NextResponse.json(
         { error: 'Corpo da requisição inválido. Esperado um JSON válido.' },
@@ -30,7 +32,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { job_id, status, video_url, error_message, user_id } = payload;
+    const { 
+      job_id, 
+      status, 
+      video_url, 
+      error_message, 
+      user_id,
+      audio_url,
+      b_roll_videos,
+      video_urls,
+      subtitles
+    } = payload;
+    console.log(`📥 [n8n-callback] Campos extraídos: job_id=${job_id}, status=${status}, video_url=${video_url}`);
+
 
     if (!job_id || !status) {
       return NextResponse.json(
@@ -106,8 +120,27 @@ export async function POST(request: NextRequest) {
 
     // 5. Atualizar o status do job e dados adicionais
     const updateData: Record<string, any> = { status };
-    if (status === 'ready' && video_url) {
-      updateData.video_url = video_url;
+    if (status === 'ready') {
+      if (video_url) {
+        updateData.video_url = video_url;
+      }
+
+      // Adicionar a composição para renderização no frontend no script_json do banco
+      const composition: Record<string, any> = {};
+      if (audio_url) composition.audio_url = audio_url;
+      
+      const vids = b_roll_videos || video_urls;
+      if (vids) {
+        composition.video_urls = Array.isArray(vids) ? vids : [vids];
+      }
+      
+      if (subtitles) {
+        composition.subtitles = Array.isArray(subtitles) ? subtitles : [];
+      }
+
+      if (Object.keys(composition).length > 0) {
+        updateData.script_json = composition;
+      }
     }
 
     // Como n8n atualiza em lote, usamos supabaseAdmin que ignora RLS

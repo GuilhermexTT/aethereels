@@ -1,36 +1,37 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Sparkles, 
-  Send, 
-  Play, 
-  Pause, 
-  Volume2, 
-  VolumeX, 
-  Maximize2, 
-  Clock, 
-  ChevronRight, 
-  Languages, 
-  Flame, 
-  Hourglass, 
-  Link2, 
-  Music, 
-  Type, 
-  Loader2, 
-  CheckCircle2 
+import {
+  Sparkles,
+  Send,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Maximize2,
+  Clock,
+  ChevronRight,
+  Languages,
+  Flame,
+  Hourglass,
+  Link2,
+  Music,
+  Type,
+  Loader2,
+  CheckCircle2
 } from 'lucide-react';
 import { useDashboard } from '../../../context/DashboardContext';
 import { TabType, LanguageType, ToneType, DurationType } from '../../../types/dashboard';
+import { createClient } from '@supabase/supabase-js';
 
 export default function CreationDashboard() {
-  const { 
-    credits, 
-    decrementCredits, 
-    videoState, 
-    setVideoState, 
-    activeTab, 
-    setActiveTab 
+  const {
+    credits,
+    decrementCredits,
+    videoState,
+    setVideoState,
+    activeTab,
+    setActiveTab
   } = useDashboard();
 
   // Inputs state
@@ -52,12 +53,15 @@ export default function CreationDashboard() {
   const [currentTime, setCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [currentSubtitle, setCurrentSubtitle] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const loadingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Dynamic composition states
+  const [audioUrl, setAudioUrl] = useState('');
+  const [videoUrls, setVideoUrls] = useState<string[]>([]);
+  const [isDynamicMode, setIsDynamicMode] = useState(false);
 
-  // Synced subtitles dictionary based on current video play time
-  const subtitles = [
+  // Default subtitles and fallback videos
+  const defaultSubtitles = [
     { start: 0, end: 2.5, text: 'DISCIPLINA' },
     { start: 2.5, end: 5.5, text: 'É FAZER HOJE' },
     { start: 5.5, end: 8.5, text: 'O QUE VOCÊ VAI' },
@@ -65,6 +69,137 @@ export default function CreationDashboard() {
     { start: 11.5, end: 14.5, text: 'O ESPAÇO É O LIMITE' },
     { start: 14.5, end: 18.0, text: 'PARA QUEM NÃO TEM MEDO.' },
   ];
+
+  const fallbackVideos = [
+    'https://media.w3.org/2010/05/sintel/trailer_hd.mp4',
+    'https://www.w3schools.com/html/mov_bbb.mp4',
+    'https://www.w3schools.com/html/movie.mp4',
+    'https://media.w3.org/2010/05/sintel/trailer_hd.mp4'
+  ];
+
+  const [subtitles, setSubtitles] = useState<{ start: number; end: number; text: string }[]>(defaultSubtitles);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const phoneContainerRef = useRef<HTMLDivElement>(null);
+  const loadingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Calculate total subtitles duration as a fallback for the audio duration
+  const subtitlesDuration = subtitles.length > 0 ? subtitles[subtitles.length - 1].end : 15;
+
+  // Use subtitlesDuration as fallback if audio duration is not loaded or is shorter than 2.0 seconds (likely corrupted/undefined)
+  const totalDuration = (videoDuration && videoDuration > 2.0) ? videoDuration : (subtitlesDuration || 18);
+
+  // Dynamically calculate the active video index in loop mode based on currentTime
+  const getActiveVideoIndex = () => {
+    if (videoUrls.length === 0) return 0;
+    const clipDuration = totalDuration / videoUrls.length;
+    const index = Math.floor(currentTime / clipDuration);
+    return Math.min(Math.max(0, index), videoUrls.length - 1);
+  };
+
+  const activeVideoIndex = isDynamicMode ? getActiveVideoIndex() : 0;
+
+  // Keep track of current time in a ref to avoid recreating the animation frame loop on every tick
+  const currentTimeRef = useRef(0);
+
+  // Sync ref with state updates (e.g. when reset or manual seek happens)
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
+
+  // Robust animation frame loop for dynamic mode to auto-increment time when audio fails or is loading
+  useEffect(() => {
+    if (!isDynamicMode || !isPlaying) return;
+
+    let lastTime = performance.now();
+    let animationFrameId: number;
+
+    const updateLoop = () => {
+      const now = performance.now();
+      const delta = (now - lastTime) / 1000;
+      lastTime = now;
+
+      const audio = audioRef.current;
+      let nextTime = currentTimeRef.current;
+
+      // If audio is successfully playing and advancing, sync with it
+      if (audio && !audio.paused && audio.currentTime > 0 && !audio.error) {
+        nextTime = audio.currentTime;
+      } else {
+        // Otherwise use the robust high-precision timer fallback
+        nextTime = nextTime + delta;
+      }
+
+      // Handle loop reset
+      if (nextTime >= totalDuration) {
+        nextTime = 0;
+        if (audio) {
+          audio.currentTime = 0;
+          audio.play().catch(e => console.log('Audio loop play failed:', e));
+        }
+        videoRefs.current.forEach(v => {
+          if (v) v.currentTime = 0;
+        });
+      }
+
+      currentTimeRef.current = nextTime;
+      setCurrentTime(nextTime);
+
+      const activeSub = subtitles.find(sub => nextTime >= sub.start && nextTime <= sub.end);
+      setCurrentSubtitle(activeSub ? activeSub.text : '');
+
+      // Check active video and keep it playing
+      const totalClips = videoUrls.length;
+      if (totalClips > 0) {
+        const clipDuration = totalDuration / totalClips;
+        const activeIdx = Math.min(Math.max(0, Math.floor(nextTime / clipDuration)), totalClips - 1);
+        const activeVid = videoRefs.current[activeIdx];
+        if (activeVid && activeVid.paused && isPlaying) {
+          activeVid.play().catch(e => console.log('Video play failed inside loop:', e));
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(updateLoop);
+    };
+
+    animationFrameId = requestAnimationFrame(updateLoop);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [isPlaying, isDynamicMode, totalDuration, subtitles, videoUrls]);
+
+  // Sync plays/pauses for multiple background video preloaded elements
+  useEffect(() => {
+    if (!isDynamicMode) return;
+
+    if (isPlaying) {
+      const activeVid = videoRefs.current[activeVideoIndex];
+      if (activeVid) {
+        if (activeVid.paused) {
+          activeVid.currentTime = 0;
+        }
+        activeVid.play().catch(e => console.log('Video play failed:', e));
+      }
+      // Pause others
+      videoRefs.current.forEach((v, idx) => {
+        if (idx !== activeVideoIndex && v) {
+          v.pause();
+        }
+      });
+    } else {
+      // Pause all B-rolls
+      videoRefs.current.forEach(v => {
+        if (v) v.pause();
+      });
+    }
+  }, [activeVideoIndex, isPlaying, isDynamicMode, videoUrls]);
+
+  // Clean spare references when videoUrls changes to avoid memory leaks
+  useEffect(() => {
+    if (videoRefs.current.length > videoUrls.length) {
+      videoRefs.current = videoRefs.current.slice(0, videoUrls.length);
+    }
+  }, [videoUrls]);
 
   // Compilation process simulator logs
   const stages = [
@@ -92,13 +227,13 @@ export default function CreationDashboard() {
     }
   };
 
-  // Simulated Trigger Video Generation Pipeline
-  const handleGenerateVideo = () => {
+  // Trigger Video Generation Pipeline via real API and Supabase Realtime
+  const handleGenerateVideo = async () => {
     if (credits <= 0) {
       alert('Créditos insuficientes! Faça o upgrade para continuar.');
       return;
     }
-    
+
     // Validate inputs
     if (activeTab === 'text-to-video' && !prompt.trim()) {
       alert('Por favor, descreva sua ideia ou use "Gerar com IA".');
@@ -109,51 +244,167 @@ export default function CreationDashboard() {
       return;
     }
 
-    // Deduct credit
-    decrementCredits(1);
-    
-    // Start loading pipeline
-    setVideoState('loading');
-    setLoadingProgress(0);
-    setLoadingStage(0);
-    setLoadingLog(stages[0].log);
+    try {
+      setVideoState('loading');
+      setLoadingProgress(5);
+      setLoadingStage(0);
+      setLoadingLog('Conectando ao banco de dados...');
 
-    let currentProgress = 0;
-    let stageIndex = 0;
+      // Conectar ao Supabase
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-    if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
-
-    loadingIntervalRef.current = setInterval(() => {
-      currentProgress += 5;
-      
-      if (currentProgress > 100) {
-        currentProgress = 100;
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase client não configurado na aplicação.');
       }
 
-      setLoadingProgress(currentProgress);
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-      // Transition stages logs
-      if (stageIndex < stages.length - 1 && currentProgress >= stages[stageIndex + 1].progress) {
-        stageIndex++;
-        setLoadingStage(stageIndex);
-        setLoadingLog(stages[stageIndex].log);
+      // Em desenvolvimento local, se o usuário do frontend não estiver autenticado,
+      // realizamos o login automático para que o canal Realtime (que respeita RLS) possa receber as notificações.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setLoadingLog('Autenticando sessão de testes...');
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: 'dev-reelsflow-user@example.com',
+          password: 'PasswordDev123!'
+        });
+        if (signInError) {
+          console.warn('Erro ao autenticar sessão de testes local:', signInError.message);
+        } else {
+          console.log('🔧 [DEV MODE] Autenticado com sucesso no frontend para ouvir notificações do banco.');
+        }
       }
 
-      if (currentProgress === 100) {
-        if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
-        // Completed compilation, delay 500ms for user experience
-        setTimeout(() => {
-          setVideoState('ready');
-          setIsPlaying(false);
-        }, 500);
+      setLoadingProgress(10);
+      setLoadingLog('Iniciando geração de vídeo no orquestrador...');
+
+      // Construir o prompt completo a partir dos seletores para influenciar a IA no n8n
+      const selectedLanguage = language === 'pt' ? 'Português' : language === 'en' ? 'Inglês' : 'Espanhol';
+      const formattedPrompt = `${prompt.trim()} (Idioma: ${selectedLanguage}, Tom de voz: ${tone}, Duração: ${duration})`;
+
+      // Chamar a API real do Next.js
+      const response = await fetch('/api/video/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt_input: formattedPrompt }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Falha ao solicitar geração do vídeo.');
       }
-    }, 200); // Takes ~4 seconds total to compile
+
+      const data = await response.json();
+      const jobId = data.job_id;
+
+      decrementCredits(1);
+      setLoadingProgress(25);
+      setLoadingStage(1);
+      setLoadingLog('Roteirizando com Inteligência Artificial...');
+
+      const channel = supabase
+        .channel(`job-progress-${jobId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'video_jobs',
+            filter: `id=eq.${jobId}`,
+          },
+          (payload: any) => {
+            const updatedJob = payload.new;
+            console.log('Update de status em tempo real recebido:', updatedJob);
+
+            if (updatedJob.status === 'scripting') {
+              setLoadingProgress(50);
+              setLoadingStage(2);
+              setLoadingLog('Gerando locução e mídias de fundo...');
+            } else if (updatedJob.status === 'rendering') {
+              setLoadingProgress(80);
+              setLoadingStage(4);
+              setLoadingLog('Processando mídias...');
+            } else if (updatedJob.status === 'ready') {
+              setLoadingProgress(100);
+              setLoadingStage(5);
+              setLoadingLog('Vídeo pronto!');
+
+              channel.unsubscribe();
+
+              setTimeout(() => {
+                let parsedScript: any = null;
+                if (updatedJob.script_json) {
+                  try {
+                    parsedScript = typeof updatedJob.script_json === 'string'
+                      ? JSON.parse(updatedJob.script_json)
+                      : updatedJob.script_json;
+                  } catch (e) {
+                    console.error('Erro ao fazer parse do script_json:', e);
+                  }
+                }
+
+                if (parsedScript && (parsedScript.audio_url || parsedScript.b_roll_videos || parsedScript.video_urls)) {
+                  setIsDynamicMode(true);
+                  setAudioUrl(parsedScript.audio_url || '');
+
+                  // Combina as duas possibilidades para garantir compatibilidade com o n8n
+                  const actualVideos = parsedScript.b_roll_videos || parsedScript.video_urls;
+
+                  const clips = (actualVideos && actualVideos.length > 0)
+                    ? actualVideos
+                    : fallbackVideos;
+                  setVideoUrls(clips);
+
+                  if (parsedScript.subtitles && parsedScript.subtitles.length > 0) {
+                    let currentStart = 0;
+                    const mapped = parsedScript.subtitles.map((sub: any) => {
+                      const duration = parseFloat(sub.duration) || 3;
+                      const start = currentStart;
+                      const end = currentStart + duration;
+                      currentStart = end;
+                      return {
+                        start,
+                        end,
+                        text: sub.text
+                      };
+                    });
+                    setSubtitles(mapped);
+                  } else {
+                    setSubtitles(defaultSubtitles);
+                  }
+
+                  setVideoUrl('');
+                } else {
+                  setIsDynamicMode(false);
+                  setVideoUrl(updatedJob.video_url || '');
+                  setSubtitles(defaultSubtitles);
+                }
+
+                setVideoState('ready');
+                setIsPlaying(false);
+              }, 800);
+            } else if (updatedJob.status === 'failed') {
+              channel.unsubscribe();
+              setVideoState('idle');
+              alert('A geração do vídeo falhou. Seus créditos foram estornados.');
+            }
+          }
+        )
+        .subscribe();
+
+    } catch (error: any) {
+      console.error('Erro ao gerar vídeo:', error);
+      setVideoState('idle');
+      alert(error.message || 'Ocorreu um erro ao gerar o vídeo.');
+    }
   };
 
-  // Video Time Update listener to synchronize captions
-  const handleTimeUpdate = () => {
-    if (!videoRef.current) return;
-    const time = videoRef.current.currentTime;
+  // Master Time/Subtitles updates (supports both audio timing and video timing)
+  const handleTimeUpdate = (e: React.SyntheticEvent<HTMLMediaElement>) => {
+    const time = e.currentTarget.currentTime;
     setCurrentTime(time);
 
     // Find active subtitle
@@ -161,36 +412,81 @@ export default function CreationDashboard() {
     setCurrentSubtitle(activeSub ? activeSub.text : '');
   };
 
-  const handleLoadedMetadata = () => {
-    if (!videoRef.current) return;
-    setVideoDuration(videoRef.current.duration);
+  const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLMediaElement>) => {
+    setVideoDuration(e.currentTarget.duration);
+  };
+
+  const handleVideoError = (idx: number) => {
+    console.warn(`Video failed to load at index ${idx}. Ativando fallback.`);
+    setVideoUrls(prev => {
+      const copy = [...prev];
+      copy[idx] = fallbackVideos[idx % fallbackVideos.length];
+      return copy;
+    });
   };
 
   const togglePlay = () => {
-    if (!videoRef.current) return;
-    if (isPlaying) {
-      videoRef.current.pause();
-      setIsPlaying(false);
+    if (isDynamicMode) {
+      if (!audioRef.current) return;
+      if (isPlaying) {
+        audioRef.current.pause();
+        videoRefs.current.forEach(v => v?.pause());
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play().catch(e => console.log('Audio play failed:', e));
+        const activeVid = videoRefs.current[activeVideoIndex];
+        if (activeVid) {
+          activeVid.play().catch(e => console.log('Video play failed:', e));
+        }
+        setIsPlaying(true);
+      }
     } else {
-      videoRef.current.play().catch(e => console.log('Video play failed:', e));
-      setIsPlaying(true);
+      if (!videoRef.current) return;
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        videoRef.current.play().catch(e => console.log('Video play failed:', e));
+        setIsPlaying(true);
+      }
     }
   };
 
   const toggleMute = () => {
-    if (!videoRef.current) return;
-    videoRef.current.muted = !isMuted;
-    setIsMuted(!isMuted);
+    if (isDynamicMode) {
+      if (!audioRef.current) return;
+      audioRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    } else {
+      if (!videoRef.current) return;
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
   };
 
   const handleFullscreen = () => {
-    if (!videoRef.current) return;
-    if (videoRef.current.requestFullscreen) {
-      videoRef.current.requestFullscreen();
+    const el = phoneContainerRef.current;
+    if (!el) return;
+    if (el.requestFullscreen) {
+      el.requestFullscreen();
+    }
+  };
+
+  const handleAudioEnded = () => {
+    if (isDynamicMode && audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(e => console.log('Audio loop play failed:', e));
+      // Reset video times
+      videoRefs.current.forEach(v => {
+        if (v) v.currentTime = 0;
+      });
     }
   };
 
   const triggerVerExemplo = () => {
+    setIsDynamicMode(false);
+    setVideoUrl('');
+    setSubtitles(defaultSubtitles);
     setVideoState('ready');
     setIsPlaying(false);
     // Insert mock values
@@ -203,23 +499,27 @@ export default function CreationDashboard() {
   // Auto-pause video if state is changed
   useEffect(() => {
     if (videoState !== 'ready') {
-      setIsPlaying(false);
+      const timer = setTimeout(() => {
+        setIsPlaying(false);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [videoState]);
 
   // Clean interval on unmount
   useEffect(() => {
+    const currentInterval = loadingIntervalRef.current;
     return () => {
-      if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+      if (currentInterval) clearInterval(currentInterval);
     };
   }, []);
 
   return (
     <div className="grid grid-cols-12 gap-8 items-start">
-      
+
       {/* 4.1. Módulo Principal de Criação (65% width equivalent) */}
       <section className="col-span-12 lg:col-span-8 flex flex-col gap-8">
-        
+
         {/* Bloco de Boas Vindas */}
         <div className="flex flex-col gap-2">
           <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight text-white">
@@ -234,17 +534,16 @@ export default function CreationDashboard() {
         {/* Card de Workspace Principal */}
         <div className="bg-[#0b1329]/20 backdrop-blur-md border border-[#1e293b]/40 rounded-2xl p-8 flex flex-col gap-8 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2" />
-          
+
           {/* Abas de Contexto */}
           <div className="relative z-10 grid grid-cols-3 rounded-xl bg-[#050b14] p-1 border border-[#1e293b]/30">
-            
+
             <button
               onClick={() => handleTabChange('text-to-video')}
-              className={`flex items-center justify-center gap-2 rounded-lg py-3 text-xs md:text-sm font-semibold transition-all duration-300 relative ${
-                activeTab === 'text-to-video'
+              className={`flex items-center justify-center gap-2 rounded-lg py-3 text-xs md:text-sm font-semibold transition-all duration-300 relative ${activeTab === 'text-to-video'
                   ? 'bg-slate-900/50 text-cyan-400 border-b border-cyan-400/80 shadow-[inset_0_-8px_12px_rgba(6,182,212,0.05)]'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/20'
-              }`}
+                }`}
             >
               <Type className="h-4 w-4" />
               <span>Texto para Vídeo</span>
@@ -255,11 +554,10 @@ export default function CreationDashboard() {
 
             <button
               onClick={() => handleTabChange('blog-link')}
-              className={`flex items-center justify-center gap-2 rounded-lg py-3 text-xs md:text-sm font-semibold transition-all duration-300 relative ${
-                activeTab === 'blog-link'
+              className={`flex items-center justify-center gap-2 rounded-lg py-3 text-xs md:text-sm font-semibold transition-all duration-300 relative ${activeTab === 'blog-link'
                   ? 'bg-slate-900/50 text-cyan-400 border-b border-cyan-400/80 shadow-[inset_0_-8px_12px_rgba(6,182,212,0.05)]'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/20'
-              }`}
+                }`}
             >
               <Link2 className="h-4 w-4" />
               <span>Link de Blog</span>
@@ -270,11 +568,10 @@ export default function CreationDashboard() {
 
             <button
               onClick={() => handleTabChange('trend-audio')}
-              className={`flex items-center justify-center gap-2 rounded-lg py-3 text-xs md:text-sm font-semibold transition-all duration-300 relative ${
-                activeTab === 'trend-audio'
+              className={`flex items-center justify-center gap-2 rounded-lg py-3 text-xs md:text-sm font-semibold transition-all duration-300 relative ${activeTab === 'trend-audio'
                   ? 'bg-slate-900/50 text-cyan-400 border-b border-cyan-400/80 shadow-[inset_0_-8px_12px_rgba(6,182,212,0.05)]'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/20'
-              }`}
+                }`}
             >
               <Music className="h-4 w-4" />
               <span>Áudio Trend</span>
@@ -287,7 +584,7 @@ export default function CreationDashboard() {
 
           {/* Área Dinâmica de Input baseada na Aba */}
           <div className="relative z-10 flex flex-col gap-2">
-            
+
             {activeTab === 'text-to-video' && (
               <div className="relative rounded-xl border border-[#1e293b]/40 bg-[#050b14] p-4 focus-within:border-cyan-500/40 transition-all duration-300">
                 <textarea
@@ -296,13 +593,13 @@ export default function CreationDashboard() {
                   placeholder="Descreva sua ideia, tópico ou cole seu texto aqui..."
                   className="w-full min-h-[160px] bg-transparent text-slate-100 text-sm placeholder-slate-500 outline-none resize-none"
                 />
-                
+
                 {/* Rodapé Interno do Input */}
                 <div className="flex items-center justify-between border-t border-[#1e293b]/20 pt-3 mt-2">
                   <span className="text-[11px] text-slate-500 font-medium">
                     {prompt.length}/4000 caracteres
                   </span>
-                  
+
                   <button
                     onClick={handleGenerateAI}
                     className="flex items-center gap-1.5 rounded-lg bg-cyan-500/5 border border-cyan-500/20 px-3 py-1.5 text-xs font-semibold text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/40 active:scale-95 transition-all duration-200 shadow-[0_0_15px_rgba(6,182,212,0.05)]"
@@ -325,7 +622,7 @@ export default function CreationDashboard() {
                     placeholder="Cole a URL do post do blog aqui (ex: https://meublog.com/post)"
                     className="w-full bg-transparent text-slate-100 text-sm placeholder-slate-500 outline-none"
                   />
-                  
+
                   <button
                     onClick={handleGenerateAI}
                     className="flex items-center gap-1.5 rounded-lg bg-cyan-500/5 border border-cyan-500/20 px-3 py-1.5 text-xs font-semibold text-cyan-400 whitespace-nowrap hover:bg-cyan-500/10 active:scale-95 transition-all"
@@ -334,7 +631,7 @@ export default function CreationDashboard() {
                     <span>Gerar com IA</span>
                   </button>
                 </div>
-                
+
                 <div className="relative rounded-xl border border-[#1e293b]/40 bg-[#050b14] p-4 focus-within:border-cyan-500/40 transition-all duration-300">
                   <textarea
                     placeholder="Instruções de tom ou cortes adicionais (opcional)..."
@@ -350,7 +647,7 @@ export default function CreationDashboard() {
             {activeTab === 'trend-audio' && (
               <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  
+
                   {/* Select customizado de áudio trend */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-semibold text-slate-400">Áudio do Momento</label>
@@ -380,7 +677,7 @@ export default function CreationDashboard() {
                       <span>Selecionar Melhor Áudio com IA</span>
                     </button>
                   </div>
-                  
+
                 </div>
 
                 <div className="relative rounded-xl border border-[#1e293b]/40 bg-[#050b14] p-4 focus-within:border-cyan-500/40 transition-all duration-300">
@@ -399,7 +696,7 @@ export default function CreationDashboard() {
 
           {/* Barra de Ajustes Rápidos */}
           <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-white/5 pt-6">
-            
+
             {/* Seletor Idioma */}
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
@@ -501,13 +798,13 @@ export default function CreationDashboard() {
 
       {/* 4.2. Módulo Preview 9:16 (35% width equivalent) */}
       <section className="col-span-12 lg:col-span-4 flex flex-col gap-6 lg:h-full justify-start">
-        
+
         {/* Topo do Preview */}
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-bold text-white tracking-tight">
             Preview 9:16
           </h2>
-          
+
           <button
             onClick={triggerVerExemplo}
             className="rounded-lg border border-[#1e293b]/60 bg-slate-900/30 px-3.5 py-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 hover:border-[#1e293b] hover:bg-slate-900/60 active:scale-95 transition-all duration-200"
@@ -519,13 +816,16 @@ export default function CreationDashboard() {
         {/* Smartphone Container Outline */}
         <div className="bg-[#0b1329]/20 backdrop-blur-md border border-[#1e293b]/40 rounded-3xl p-6 flex flex-col items-center justify-center shadow-xl relative min-h-[520px] overflow-hidden lg:flex-1">
           <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-cyan-500/5 rounded-full blur-[80px] pointer-events-none translate-x-1/2 -translate-y-1/2" />
-          
+
           {/* Corpo do Celular (Rigid Aspect Ratio 9:16) */}
-          <div className="relative w-[250px] aspect-[9/16] rounded-[2.5rem] border-[6px] border-slate-800 bg-[#050b14] overflow-hidden shadow-2xl flex flex-col items-center justify-center ring-1 ring-white/10">
-            
+          <div
+            ref={phoneContainerRef}
+            className="relative w-[250px] aspect-[9/16] rounded-[2.5rem] border-[6px] border-slate-800 bg-[#050b14] overflow-hidden shadow-2xl flex flex-col items-center justify-center ring-1 ring-white/10"
+          >
+
             {/* Slot de alto-falante/câmera (Notch) */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 h-4 w-24 bg-slate-800 rounded-b-2xl z-40 border-b border-white/5" />
-            
+
             {/* ESTADO 1: Idle */}
             {videoState === 'idle' && (
               <div className="flex flex-col items-center text-center p-6 gap-4 animate-fade-in relative z-20">
@@ -548,7 +848,7 @@ export default function CreationDashboard() {
               <div className="w-full h-full p-4 flex flex-col justify-between relative z-20">
                 {/* Placeholder para o notch da tela de carregamento */}
                 <div className="h-6" />
-                
+
                 {/* Spinner centralizado */}
                 <div className="flex flex-col items-center justify-center gap-4 flex-1">
                   <div className="relative flex items-center justify-center">
@@ -564,12 +864,12 @@ export default function CreationDashboard() {
                 <div className="flex flex-col gap-2.5 bg-[#030712]/85 border border-[#1e293b]/40 rounded-xl p-3.5 shadow-lg backdrop-blur-sm">
                   {/* Faux progress bar */}
                   <div className="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-200" 
+                    <div
+                      className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-200"
                       style={{ width: `${loadingProgress}%` }}
                     />
                   </div>
-                  
+
                   {/* Logs */}
                   <div className="flex flex-col gap-1">
                     <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">
@@ -586,17 +886,66 @@ export default function CreationDashboard() {
             {/* ESTADO 3: Ready (Video Player with synced captions) */}
             {videoState === 'ready' && (
               <div className="w-full h-full relative z-20 group/player flex flex-col justify-end">
-                {/* HTML5 Native Video Tag */}
-                <video
-                  ref={videoRef}
-                  onTimeUpdate={handleTimeUpdate}
-                  onLoadedMetadata={handleLoadedMetadata}
-                  onClick={togglePlay}
-                  loop
-                  playsInline
-                  src="https://assets.mixkit.co/videos/preview/mixkit-astronaut-floating-in-space-42617-large.mp4"
-                  className="absolute inset-0 w-full h-full object-cover cursor-pointer bg-black"
-                />
+                {/* Mode 1: Static Video Player */}
+                {!isDynamicMode && (
+                  <video
+                    ref={videoRef}
+                    onTimeUpdate={handleTimeUpdate}
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onClick={togglePlay}
+                    loop
+                    playsInline
+                    src={videoUrl || "https://media.w3.org/2010/05/sintel/trailer_hd.mp4"}
+                    className="absolute inset-0 w-full h-full object-cover cursor-pointer bg-black"
+                  />
+                )}
+
+                {/* Mode 2: Dynamic Frontend Composition Player */}
+                {isDynamicMode && (
+                  <>
+                    {/* Audio timing master */}
+                    <audio
+                      ref={audioRef}
+                      src={audioUrl}
+                      preload="auto"
+                      onTimeUpdate={handleTimeUpdate}
+                      onLoadedMetadata={handleLoadedMetadata}
+                      onEnded={handleAudioEnded}
+                      loop={false}
+                    />
+
+                    {/* Preloaded video B-rolls layers */}
+                    {videoUrls.map((url, idx) => {
+                      const isActive = idx === activeVideoIndex;
+                      
+                      // Detecta se o link veio como objeto ou string pura do banco
+                      const videoSrc = typeof url === 'object' && url !== null 
+                        ? (String((url as unknown as Record<string, unknown>).url || (url as unknown as Record<string, unknown>).link || '')) 
+                        : String(url);
+
+                      // Se por algum motivo o link ainda estiver vazio, não renderiza a tag para não quebrar o player
+                      if (!videoSrc) return null;
+
+                      return (
+                        <video
+                          key={`${videoSrc}-${idx}`}
+                          ref={el => {
+                            videoRefs.current[idx] = el;
+                          }}
+                          src={videoSrc}
+                          onClick={togglePlay}
+                          preload="auto"
+                          onError={() => handleVideoError(idx)}
+                          className={`absolute inset-0 w-full h-full object-cover cursor-pointer bg-black transition-opacity duration-700 ${isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+                            }`}
+                          muted
+                          playsInline
+                          loop
+                        />
+                      );
+                    })}
+                  </>
+                )}
 
                 {/* Subtitle Overlay (Strictly styled like Reels, centered black box with bold text) */}
                 <div className="absolute inset-x-3 bottom-24 flex items-center justify-center z-30 pointer-events-none">
@@ -611,42 +960,43 @@ export default function CreationDashboard() {
 
                 {/* Video Custom Controller Bar */}
                 <div className="relative z-30 flex flex-col gap-2 p-3 bg-gradient-to-t from-black/95 via-black/70 to-transparent pt-12 opacity-100 lg:opacity-0 group-hover/player:opacity-100 transition-all duration-300">
-                  
+
                   {/* Synced Timeline Progress Bar */}
                   <div className="relative w-full h-1 bg-white/20 rounded-full overflow-hidden cursor-pointer">
-                    <div 
+                    <div
                       className="absolute left-0 top-0 h-full bg-cyan-400"
-                      style={{ width: `${videoDuration ? (currentTime / videoDuration) * 100 : 0}%` }}
+                      style={{ width: `${totalDuration ? (currentTime / totalDuration) * 100 : 0}%` }}
                     />
                   </div>
 
                   <div className="flex items-center justify-between gap-2 text-white">
                     {/* Controles de Play/Time */}
                     <div className="flex items-center gap-2">
-                      <button 
-                        onClick={togglePlay} 
+                      <button
+                        onClick={togglePlay}
                         className="p-1 hover:bg-white/10 rounded-md transition-colors"
                       >
                         {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                       </button>
-                      
+
                       {/* Time ticker */}
                       <span className="text-[9px] font-semibold text-slate-300">
                         {Math.floor(currentTime / 60)}:
-                        {String(Math.floor(currentTime % 60)).padStart(2, '0')} / 0:19
+                        {String(Math.floor(currentTime % 60)).padStart(2, '0')} / {Math.floor(totalDuration / 60)}:
+                        {String(Math.floor(totalDuration % 60)).padStart(2, '0')}
                       </span>
                     </div>
 
                     {/* Controles de Áudio/Tamanho */}
                     <div className="flex items-center gap-1.5">
-                      <button 
-                        onClick={toggleMute} 
+                      <button
+                        onClick={toggleMute}
                         className="p-1 hover:bg-white/10 rounded-md transition-colors"
                       >
                         {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
                       </button>
-                      <button 
-                        onClick={handleFullscreen} 
+                      <button
+                        onClick={handleFullscreen}
                         className="p-1 hover:bg-white/10 rounded-md transition-colors"
                       >
                         <Maximize2 className="h-3.5 w-3.5" />
@@ -687,7 +1037,7 @@ export default function CreationDashboard() {
       {/* 4.3. Atalho Inferior de Histórico (Full Width) */}
       <section className="col-span-12 mt-4">
         <div className="bg-[#0b1329]/20 backdrop-blur-md border border-[#1e293b]/40 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg hover:border-slate-800 transition-all duration-300">
-          
+
           <div className="flex items-center gap-4">
             <div className="h-10 w-10 rounded-xl bg-slate-900/60 border border-[#1e293b]/50 flex items-center justify-center text-slate-400 shrink-0 shadow-inner">
               <Clock className="h-5 w-5 text-cyan-400" />

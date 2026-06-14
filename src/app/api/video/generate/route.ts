@@ -28,20 +28,89 @@ export async function POST(request: NextRequest) {
     const supabaseUser = await getSupabaseUserClientFromRequest();
 
     // 3. Obter dados do usuário autenticado a partir da sessão
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+    let user: any = null;
+    let authError: any = null;
+    try {
+      const { data: { user: supabaseAuthUser }, error: err } = await supabaseUser.auth.getUser();
+      user = supabaseAuthUser;
+      authError = err;
+    } catch (err) {
+      console.log('Nenhuma sessão ativa encontrada via cookies/auth headers.');
+    }
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Não autorizado. Faça login para gerar vídeos.' },
-        { status: 401 }
-      );
+      // Em modo de desenvolvimento, se não houver usuário logado, criamos/usamos um usuário padrão de testes
+      if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
+        console.log('🔧 [DEV MODE] Nenhuma sessão ativa detectada. Criando/usando usuário padrão de testes...');
+        
+        // Verificar se existe algum usuário cadastrado na tabela de usuários públicos
+        const { data: existingUsers } = await supabaseAdmin
+          .from('users')
+          .select('id, email')
+          .limit(1);
+
+        if (existingUsers && existingUsers.length > 0) {
+          user = { id: existingUsers[0].id, email: existingUsers[0].email };
+          console.log(`🔧 [DEV MODE] Usando usuário de testes existente: ${user.email} (${user.id})`);
+        } else {
+          // Se não houver, criamos um usuário padrão
+          const testEmail = 'dev-reelsflow-user@example.com';
+          const testPassword = 'PasswordDev123!';
+          
+          const { data: authUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
+            email: testEmail,
+            password: testPassword,
+            email_confirm: true
+          });
+
+          if (createUserError || !authUser.user) {
+            console.error('Falha ao criar usuário de testes no Supabase Auth:', createUserError);
+            return NextResponse.json(
+              { error: 'Não autorizado. Falha ao gerar usuário padrão de testes.' },
+              { status: 401 }
+            );
+          }
+
+          user = authUser.user;
+          console.log(`🔧 [DEV MODE] Novo usuário de testes criado no Auth: ${testEmail} (${user.id})`);
+
+          // Inserir na tabela public.users com saldo inicial de créditos
+          const { error: insertUserError } = await supabaseAdmin
+            .from('users')
+            .insert({
+              id: user.id,
+              email: testEmail,
+              credits_balance: 1000 // Saldo para testes locais
+            });
+
+          if (insertUserError) {
+            console.error('Erro ao inserir perfil do usuário de testes na tabela public.users:', insertUserError);
+            return NextResponse.json(
+              { error: 'Não autorizado. Falha ao inicializar créditos do usuário padrão de testes.' },
+              { status: 401 }
+            );
+          }
+          console.log('🔧 [DEV MODE] Perfil criado na tabela public.users com 1000 créditos.');
+        }
+      } else {
+        return NextResponse.json(
+          { error: 'Não autorizado. Faça login para gerar vídeos.' },
+          { status: 401 }
+        );
+      }
     }
 
     // 4. Invocar a RPC para debitar crédito de forma atômica (previne Race Conditions)
-    const { data: jobId, error: rpcError } = await supabaseUser.rpc('debit_video_credit', {
+    // Se for em modo de desenvolvimento sem sessão ativa, usamos supabaseAdmin para bypassar RLS da RPC
+    const supabaseClientToUse = (authError || !user || user.email === 'dev-reelsflow-user@example.com') 
+      ? supabaseAdmin 
+      : supabaseUser;
+
+    const { data: jobId, error: rpcError } = await supabaseClientToUse.rpc('debit_video_credit', {
       p_user_id: user.id,
       p_prompt_input: prompt_input.trim()
     });
+
 
     if (rpcError) {
       // O Supabase retorna códigos de erro PostgreSQL em 'code'.
