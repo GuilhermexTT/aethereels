@@ -270,9 +270,10 @@ export default function CreationDashboard() {
           password: 'PasswordDev123!'
         });
         if (signInError) {
-          console.warn('Erro ao autenticar sessão de testes local:', signInError.message);
+          console.warn('Erro ao autenticar sessão de testes:', signInError.message);
+          alert(`Erro ao autenticar no Supabase: ${signInError.message}. Verifique se o usuário 'dev-reelsflow-user@example.com' com a senha 'PasswordDev123!' foi criado no Supabase de produção.`);
         } else {
-          console.log('🔧 [DEV MODE] Autenticado com sucesso no frontend para ouvir notificações do banco.');
+          console.log('🔧 Autenticado com sucesso no frontend para ouvir notificações do banco.');
         }
       }
 
