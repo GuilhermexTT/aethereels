@@ -42,6 +42,7 @@ export default function CreationDashboard() {
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
   const [currentSubtitle, setCurrentSubtitle] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
 
@@ -64,6 +65,7 @@ export default function CreationDashboard() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const phoneContainerRef = useRef<HTMLDivElement>(null);
   const currentTimeRef = useRef(0);
 
@@ -72,7 +74,9 @@ export default function CreationDashboard() {
   }, [currentTime]);
 
   const subtitlesDuration = subtitles.length > 0 ? subtitles[subtitles.length - 1].end : 12;
-  const totalDuration = (videoDuration && videoDuration > 2.0) ? videoDuration : (subtitlesDuration || 12);
+  const totalDuration = isDynamicMode
+    ? (audioDuration && audioDuration > 2.0 ? audioDuration : subtitlesDuration)
+    : (videoDuration && videoDuration > 2.0 ? videoDuration : subtitlesDuration);
 
   // Lógica reativa simplificada baseada no tempo do áudio master
   const getActiveVideoIndex = () => {
@@ -86,16 +90,6 @@ export default function CreationDashboard() {
   };
 
   const activeVideoIndex = isDynamicMode ? getActiveVideoIndex() : 0;
-
-  const getActiveVideoSrc = () => {
-    if (isDynamicMode && videoUrls.length > 0) {
-      const url = videoUrls[activeVideoIndex];
-      return typeof url === 'object' && url !== null ? String((url as any).url || (url as any).link || '') : String(url);
-    }
-    return videoUrl || "https://media.w3.org/2010/05/sintel/trailer_hd.mp4";
-  };
-
-  const activeVideoSrc = getActiveVideoSrc();
 
   // Loop de animação sincronizado exclusivamente com a tag de áudio master
   useEffect(() => {
@@ -139,40 +133,67 @@ export default function CreationDashboard() {
     return () => cancelAnimationFrame(animationFrameId);
   }, [isPlaying, isDynamicMode, totalDuration, subtitles, videoUrls]);
 
+  // Control playing/pausing of B-roll videos based on activeVideoIndex and isPlaying
+  useEffect(() => {
+    if (!isDynamicMode) return;
+    
+    videoRefs.current.forEach((video, idx) => {
+      if (video) {
+        if (idx === activeVideoIndex) {
+          if (isPlaying) {
+            // Se mudou de cena, reinicia o currentTime do novo clipe para iniciar do início da cena
+            video.currentTime = 0;
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+          }
+        } else {
+          video.pause();
+          video.currentTime = 0;
+        }
+      }
+    });
+  }, [activeVideoIndex, isPlaying, isDynamicMode]);
+
   const handleTimeUpdate = (e: React.SyntheticEvent<HTMLMediaElement>) => {
-    if (!isDynamicMode) {
-      const time = e.currentTarget.currentTime;
-      setCurrentTime(time);
-      const activeSub = subtitles.find(sub => time >= sub.start && time <= sub.end);
-      setCurrentSubtitle(activeSub ? activeSub.text : '');
-    }
+    const time = e.currentTarget.currentTime;
+    setCurrentTime(time);
+    const activeSub = subtitles.find(sub => time >= sub.start && time <= sub.end);
+    setCurrentSubtitle(activeSub ? activeSub.text : '');
   };
 
-  const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLMediaElement>) => {
+  const handleVideoLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     setVideoDuration(e.currentTarget.duration);
+  };
+
+  const handleAudioLoadedMetadata = (e: React.SyntheticEvent<HTMLAudioElement>) => {
+    setAudioDuration(e.currentTarget.duration);
   };
 
   const togglePlay = () => {
     const audio = audioRef.current;
-    const video = videoRef.current;
 
     if (isDynamicMode && audio) {
+      const activeVideo = videoRefs.current[activeVideoIndex];
       if (isPlaying) {
         audio.pause();
-        if (video) video.pause();
+        if (activeVideo) activeVideo.pause();
         setIsPlaying(false);
       } else {
         audio.play().catch(e => console.log('Erro áudio:', e));
-        if (video) video.play().catch(e => console.log('Erro vídeo:', e));
+        if (activeVideo) activeVideo.play().catch(e => console.log('Erro vídeo:', e));
         setIsPlaying(true);
       }
-    } else if (video) {
-      if (isPlaying) {
-        video.pause();
-        setIsPlaying(false);
-      } else {
-        video.play().catch(e => console.log('Erro vídeo:', e));
-        setIsPlaying(true);
+    } else {
+      const video = videoRef.current;
+      if (video) {
+        if (isPlaying) {
+          video.pause();
+          setIsPlaying(false);
+        } else {
+          video.play().catch(e => console.log('Erro vídeo:', e));
+          setIsPlaying(true);
+        }
       }
     }
   };
@@ -347,22 +368,48 @@ export default function CreationDashboard() {
 
             {videoState === 'ready' && (
               <div className="w-full h-full relative flex flex-col justify-end group/player">
-                <video
-                  ref={videoRef}
-                  src={activeVideoSrc}
-                  onTimeUpdate={handleTimeUpdate}
-                  onLoadedMetadata={handleLoadedMetadata}
-                  // ULTRA-SINCRONIZAÇÃO: Garante o Play imediato no milissegundo em que o arquivo de vídeo é trocado em tela
-                  onLoadedData={() => { if (isDynamicMode && isPlaying && videoRef.current) videoRef.current.play().catch(() => {}); }}
-                  onClick={togglePlay}
-                  loop={!isDynamicMode}
-                  playsInline
-                  muted={isDynamicMode}
-                  className="absolute inset-0 w-full h-full object-cover cursor-pointer bg-black"
-                />
+                {isDynamicMode ? (
+                  videoUrls.map((url, idx) => {
+                    const videoSrc = typeof url === 'object' && url !== null 
+                      ? String((url as any).url || (url as any).link || '') 
+                      : String(url);
+                    return (
+                      <video
+                        key={idx}
+                        ref={(el) => { videoRefs.current[idx] = el; }}
+                        src={videoSrc}
+                        style={{ display: idx === activeVideoIndex ? 'block' : 'none' }}
+                        loop
+                        playsInline
+                        muted
+                        className="absolute inset-0 w-full h-full object-cover bg-black"
+                      />
+                    );
+                  })
+                ) : (
+                  <video
+                    ref={videoRef}
+                    src={videoUrl || "https://media.w3.org/2010/05/sintel/trailer_hd.mp4"}
+                    onTimeUpdate={handleTimeUpdate}
+                    onLoadedMetadata={handleVideoLoadedMetadata}
+                    onClick={togglePlay}
+                    loop
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover cursor-pointer bg-black"
+                  />
+                )}
 
                 {isDynamicMode && (
-                  <audio ref={audioRef} src={audioUrl} onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoadedMetadata} onEnded={() => { setIsPlaying(false); setCurrentTime(0); }} />
+                  <audio
+                    ref={audioRef}
+                    src={audioUrl}
+                    onTimeUpdate={handleTimeUpdate}
+                    onLoadedMetadata={handleAudioLoadedMetadata}
+                    onEnded={() => {
+                      setIsPlaying(false);
+                      setCurrentTime(0);
+                    }}
+                  />
                 )}
 
                 <div className="absolute inset-x-3 bottom-24 flex items-center justify-center z-30 pointer-events-none">
