@@ -125,22 +125,13 @@ export async function POST(request: NextRequest) {
         updateData.video_url = video_url;
       }
 
-      // Adicionar a composição para renderização no frontend no script_json do banco
-      const composition: Record<string, any> = {};
-      if (audio_url) composition.audio_url = audio_url;
-      
-      const vids = b_roll_videos || video_urls;
-      if (vids) {
-        composition.video_urls = Array.isArray(vids) ? vids : [vids];
-      }
-      
-      if (subtitles) {
-        composition.subtitles = Array.isArray(subtitles) ? subtitles : [];
-      }
-
-      if (Object.keys(composition).length > 0) {
-        updateData.script_json = composition;
-      }
+      // Salvar explicitamente a composição de mídias e legendas no script_json do banco
+      const vids = video_urls || b_roll_videos;
+      updateData.script_json = {
+        video_urls: Array.isArray(vids) ? vids : (vids ? [vids] : []),
+        subtitles: Array.isArray(subtitles) ? subtitles : [],
+        audio_url: audio_url || ""
+      };
     }
 
     // Como n8n atualiza em lote, usamos supabaseAdmin que ignora RLS
