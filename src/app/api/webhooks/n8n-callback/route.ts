@@ -64,27 +64,24 @@ export async function POST(request: NextRequest) {
 
     console.log(`Recebido callback do n8n para o job ${job_id} com status: ${status}`);
 
-    // 4. Se o status for 'failed', executa a política de reembolso
+    // 4. Buscar o job de vídeo correspondente no banco de dados para segurança e mesclagem de dados
+    const { data: jobData, error: fetchError } = await supabaseAdmin
+      .from('video_jobs')
+      .select('user_id, script_json')
+      .eq('id', job_id)
+      .single();
+
+    if (fetchError || !jobData) {
+      console.error(`Falha ao recuperar o job ${job_id}:`, fetchError);
+      return NextResponse.json(
+        { error: 'Job de vídeo correspondente não encontrado no banco de dados.' },
+        { status: 404 }
+      );
+    }
+
+    // 5. Se o status for 'failed', executa a política de reembolso
     if (status === 'failed') {
-      let finalUserId = user_id;
-
-      // Se o n8n não passou o user_id, buscamos no banco de dados para segurança
-      if (!finalUserId) {
-        const { data: jobData, error: fetchError } = await supabaseAdmin
-          .from('video_jobs')
-          .select('user_id')
-          .eq('id', job_id)
-          .single();
-
-        if (fetchError || !jobData) {
-          console.error(`Falha ao recuperar o user_id do job ${job_id} para reembolso:`, fetchError);
-          return NextResponse.json(
-            { error: 'Job de vídeo correspondente não encontrado para execução do reembolso.' },
-            { status: 404 }
-          );
-        }
-        finalUserId = jobData.user_id;
-      }
+      const finalUserId = user_id || jobData.user_id;
 
       // Invoca a RPC public.refund_video_credit no Supabase
       const { error: refundError } = await supabaseAdmin.rpc('refund_video_credit', {
@@ -118,21 +115,43 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 5. Atualizar o status do job e dados adicionais
+    // 6. Atualizar o status do job e dados adicionais
     const updateData: Record<string, any> = { status };
-    if (status === 'ready') {
-      if (video_url) {
-        updateData.video_url = video_url;
-      }
-
-      // Salvar explicitamente a composição de mídias e legendas no script_json do banco
-      const vids = video_urls || b_roll_videos;
-      updateData.script_json = {
-        video_urls: Array.isArray(vids) ? vids : (vids ? [vids] : []),
-        subtitles: Array.isArray(subtitles) ? subtitles : [],
-        audio_url: audio_url || ""
-      };
+    if (video_url) {
+      updateData.video_url = video_url;
     }
+
+    // Recuperar e fazer parse do script_json atual
+    let currentScript: any = {};
+    if (jobData.script_json) {
+      try {
+        currentScript = typeof jobData.script_json === 'string'
+          ? JSON.parse(jobData.script_json)
+          : jobData.script_json;
+      } catch (e) {
+        console.error('Erro ao fazer parse do script_json existente:', e);
+      }
+    }
+
+    // Mesclar os novos dados se enviados no payload
+    const vids = video_urls || b_roll_videos;
+
+    const newScriptData = { ...currentScript };
+
+    if (vids !== undefined) {
+      newScriptData.video_urls = Array.isArray(vids) ? vids : [vids];
+    }
+    if (subtitles !== undefined) {
+      newScriptData.subtitles = Array.isArray(subtitles) ? subtitles : [];
+    }
+    if (audio_url !== undefined) {
+      newScriptData.audio_url = audio_url || "";
+    }
+
+    // Salvar o payload inteiro recebido nesta requisição para fins de depuração
+    newScriptData.debug_last_payload = payload;
+
+    updateData.script_json = newScriptData;
 
     // Como n8n atualiza em lote, usamos supabaseAdmin que ignora RLS
     const { error: updateError } = await supabaseAdmin
