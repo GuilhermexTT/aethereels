@@ -91,9 +91,21 @@ export default function CreationDashboard() {
   // Use subtitlesDuration as fallback if audio duration is not loaded or is shorter than 2.0 seconds (likely corrupted/undefined)
   const totalDuration = (videoDuration && videoDuration > 2.0) ? videoDuration : (subtitlesDuration || 18);
 
-  // Dynamically calculate the active video index in loop mode based on currentTime
+  // Altera dinamicamente o clipe de vídeo ativo baseado no índice da legenda atual
   const getActiveVideoIndex = () => {
     if (videoUrls.length === 0) return 0;
+    
+    // Tenta encontrar a legenda ativa no tempo atual
+    const activeSubIndex = subtitles.findIndex(
+      (sub) => currentTime >= sub.start && currentTime <= sub.end
+    );
+    
+    if (activeSubIndex !== -1) {
+      // Sincroniza o corte de vídeo com o início de cada frase da legenda
+      return activeSubIndex % videoUrls.length;
+    }
+    
+    // Fallback: divide o tempo do vídeo igualmente entre os clipes
     const clipDuration = totalDuration / videoUrls.length;
     const index = Math.floor(currentTime / clipDuration);
     return Math.min(Math.max(0, index), videoUrls.length - 1);
