@@ -18,7 +18,9 @@ import {
   Music,
   Type,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Download,
+  X
 } from 'lucide-react';
 import { useDashboard } from '../../../context/DashboardContext';
 import { TabType, LanguageType, ToneType, DurationType } from '../../../types/dashboard';
@@ -51,13 +53,29 @@ export default function CreationDashboard() {
   const [isDynamicMode, setIsDynamicMode] = useState(false);
   const [scriptData, setScriptData] = useState<any>(null);
 
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [phoneTime, setPhoneTime] = useState('12:00');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      setPhoneTime(`${hours}:${minutes}`);
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   console.log("DADOS DO SCRIPT_JSON ATUAL:", scriptData);
 
   const defaultSubtitles = [
-    { start: 0, end: 2.5, text: 'DISCIPLINA' },
-    { start: 2.5, end: 5.5, text: 'É FAZER HOJE' },
-    { start: 5.5, end: 8.5, text: 'O QUE VOCÊ VAI' },
-    { start: 8.5, end: 11.5, text: 'AGRADECER AMANHÃ.' }
+    { start: 0, end: 2.5, text: 'Disciplina' },
+    { start: 2.5, end: 5.5, text: 'é fazer hoje' },
+    { start: 5.5, end: 8.5, text: 'o que você vai' },
+    { start: 8.5, end: 11.5, text: 'agradecer amanhã.' }
   ];
 
   const fallbackVideos = ['https://media.w3.org/2010/05/sintel/trailer_hd.mp4'];
@@ -222,6 +240,28 @@ export default function CreationDashboard() {
     }
   };
 
+  const handleDownload = async () => {
+    if (!videoUrl) return;
+    setIsDownloading(true);
+    try {
+      const response = await fetch(videoUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `video-${Date.now()}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Erro ao baixar vídeo:', error);
+      window.open(videoUrl, '_blank');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const handleGenerateAI = () => {
     if (activeTab === 'text-to-video') {
       setPrompt('Crie um reels cinemático sobre alta performance e constância. Foco na jornada do astronauta no espaço profundo.');
@@ -285,6 +325,7 @@ export default function CreationDashboard() {
                 setIsDynamicMode(true);
                 setAudioUrl(parsedScript.audio_url || '');
                 setVideoUrls(parsedScript.video_urls || [updatedJob.video_url]);
+                setVideoUrl(updatedJob.video_url || '');
 
                 if (parsedScript.subtitles && parsedScript.subtitles.length > 0) {
                   let currentStart = 0;
@@ -372,93 +413,168 @@ export default function CreationDashboard() {
       <section className="col-span-12 lg:col-span-4 flex flex-col gap-6">
         <h2 className="text-lg font-bold text-white">Preview 9:16</h2>
         <div className="bg-[#0b1329]/20 backdrop-blur-md border border-[#1e293b]/40 rounded-3xl p-6 flex flex-col items-center justify-center min-h-[520px]">
-          <div ref={phoneContainerRef} className="relative w-[250px] aspect-[9/16] rounded-[2.5rem] border-[6px] border-slate-800 bg-[#050b14] overflow-hidden shadow-2xl ring-1 ring-white/10 flex flex-col justify-end">
-            
-            {videoState === 'idle' && <div className="text-center p-4 text-xs text-slate-400">Seu vídeo aparecerá aqui após a renderização.</div>}
-            
-            {videoState === 'loading' && (
-              <div className="w-full h-full flex flex-col justify-center items-center gap-2 p-4 text-center">
-                <Loader2 className="h-8 w-8 text-cyan-400 animate-spin" />
-                <span className="text-xs text-slate-200">{loadingLog}</span>
-              </div>
+          
+          <div className={isZoomed ? "fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-xl transition-all duration-300 p-4 gap-4" : "relative flex flex-col items-center gap-4"}>
+            {isZoomed && (
+              <div className="absolute inset-0 z-10 cursor-pointer" onClick={() => setIsZoomed(false)} />
             )}
 
-            {videoState === 'ready' && (
-              <div className="w-full h-full relative flex flex-col justify-end group/player">
-                {isDynamicMode ? (
-                  videoUrls.map((url, idx) => {
-                    const videoSrc = typeof url === 'object' && url !== null 
-                      ? String((url as any).url || (url as any).link || '') 
-                      : String(url);
-                    return (
-                      <video
-                        key={idx}
-                        ref={(el) => { videoRefs.current[idx] = el; }}
-                        src={videoSrc}
-                        preload="auto"
-                        style={{
-                          opacity: idx === activeVideoIndex ? 1 : 0,
-                          pointerEvents: idx === activeVideoIndex ? 'auto' : 'none',
-                          transition: 'opacity 0.2s ease-in-out'
-                        }}
-                        loop
-                        playsInline
-                        muted={true}
-                        className="absolute inset-0 w-full h-full object-cover bg-black"
-                      />
-                    );
-                  })
-                ) : (
-                  <video
-                    ref={videoRef}
-                    src={videoUrl || "https://media.w3.org/2010/05/sintel/trailer_hd.mp4"}
-                    onTimeUpdate={handleTimeUpdate}
-                    onLoadedMetadata={handleVideoLoadedMetadata}
-                    onClick={togglePlay}
-                    loop
-                    playsInline
-                    className="absolute inset-0 w-full h-full object-cover cursor-pointer bg-black"
-                  />
-                )}
+            {isZoomed && (
+              <button 
+                onClick={() => setIsZoomed(false)}
+                className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 border border-white/10 text-white rounded-full transition-all z-50 pointer-events-auto cursor-pointer"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            )}
 
-                {isDynamicMode && (
-                  <audio
-                    ref={audioRef}
-                    src={audioUrl}
-                    onTimeUpdate={handleTimeUpdate}
-                    onLoadedMetadata={handleAudioLoadedMetadata}
-                    onEnded={() => {
-                      setIsPlaying(false);
-                      setCurrentTime(0);
-                    }}
-                  />
-                )}
+            <div 
+              ref={phoneContainerRef} 
+              className={`relative z-20 aspect-[9/16] rounded-[2.5rem] border-[8px] border-slate-955 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col justify-end transition-all duration-300 ${
+                isZoomed ? 'w-[300px] sm:w-[340px] md:w-[370px]' : 'w-[250px]'
+              }`}
+            >
+              {/* Dynamic Island / Notch */}
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-40 flex items-center justify-center pointer-events-none">
+                <div className="w-1.5 h-1.5 bg-slate-900 rounded-full mr-1"></div>
+                <div className="w-3.5 h-0.5 bg-slate-950 rounded-full mx-1"></div>
+                <div className="w-1.5 h-1.5 bg-blue-950/40 rounded-full ml-1"></div>
+              </div>
 
-                <div className="absolute inset-x-3 bottom-24 flex items-center justify-center z-30 pointer-events-none">
-                  {currentSubtitle && (
-                    <div className="bg-black/80 border border-white/10 px-3 py-2 rounded-lg text-center max-w-[95%]">
-                      <p className="font-display font-black text-xs text-cyan-400 tracking-wider uppercase">{currentSubtitle}</p>
-                    </div>
+              {/* Status Bar */}
+              <div className="absolute top-1 inset-x-0 h-6 px-6 flex items-center justify-between text-[8px] font-semibold text-white/95 z-40 pointer-events-none select-none">
+                <span>{phoneTime}</span>
+                <div className="flex items-center gap-1.5">
+                  {/* Signal strength bar */}
+                  <svg className="w-2 h-2 fill-current" viewBox="0 0 24 24">
+                    <path d="M2 22h20V2z" />
+                  </svg>
+                  {/* Wifi */}
+                  <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 21l-12-14.3c.3-.3 4.8-4.7 12-4.7s11.7 4.4 12 4.7l-12 14.3z" />
+                  </svg>
+                  {/* Battery */}
+                  <div className="w-3.5 h-1.5 border border-white/80 rounded-2xs p-0.25 flex items-center">
+                    <div className="h-full w-full bg-white rounded-3xs"></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Home Indicator Pill */}
+              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-20 h-1 bg-white/40 rounded-full z-40 pointer-events-none" />
+              
+              {videoState === 'idle' && <div className="text-center p-4 text-xs text-slate-400">Seu vídeo aparecerá aqui após a renderização.</div>}
+              
+              {videoState === 'loading' && (
+                <div className="w-full h-full flex flex-col justify-center items-center gap-2 p-4 text-center">
+                  <Loader2 className="h-8 w-8 text-cyan-400 animate-spin" />
+                  <span className="text-xs text-slate-200">{loadingLog}</span>
+                </div>
+              )}
+
+              {videoState === 'ready' && (
+                <div className="w-full h-full relative flex flex-col justify-end group/player">
+                  {isDynamicMode ? (
+                    videoUrls.map((url, idx) => {
+                      const videoSrc = typeof url === 'object' && url !== null 
+                        ? String((url as any).url || (url as any).link || '') 
+                        : String(url);
+                      return (
+                        <video
+                          key={idx}
+                          ref={(el) => { videoRefs.current[idx] = el; }}
+                          src={videoSrc}
+                          preload="auto"
+                          style={{
+                            opacity: idx === activeVideoIndex ? 1 : 0,
+                            pointerEvents: idx === activeVideoIndex ? 'auto' : 'none',
+                            transition: 'opacity 0.2s ease-in-out'
+                          }}
+                          loop
+                          playsInline
+                          muted={true}
+                          className="absolute inset-0 w-full h-full object-cover bg-black"
+                        />
+                      );
+                    })
+                  ) : (
+                    <video
+                      ref={videoRef}
+                      src={videoUrl || "https://media.w3.org/2010/05/sintel/trailer_hd.mp4"}
+                      onTimeUpdate={handleTimeUpdate}
+                      onLoadedMetadata={handleVideoLoadedMetadata}
+                      onClick={togglePlay}
+                      loop
+                      playsInline
+                      className="absolute inset-0 w-full h-full object-cover cursor-pointer bg-black"
+                    />
                   )}
-                </div>
 
-                <div className="relative z-30 flex flex-col gap-2 p-3 bg-gradient-to-t from-black via-black/40 to-transparent">
-                  <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden">
-                    <div className="h-full bg-cyan-400" style={{ width: `${totalDuration ? (currentTime / totalDuration) * 100 : 0}%` }} />
-                  </div>
-                  <div className="flex items-center justify-between text-white text-[10px]">
-                    <div className="flex items-center gap-2">
-                      <button onClick={togglePlay}>{isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}</button>
-                      <span>{Math.floor(currentTime)}s / {Math.floor(totalDuration)}s</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={toggleMute}>{isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}</button>
-                      <button onClick={handleFullscreen}><Maximize2 className="h-3 w-3" /></button>
-                    </div>
-                  </div>
-                </div>
+                  {isDynamicMode && (
+                    <audio
+                      ref={audioRef}
+                      src={audioUrl}
+                      onTimeUpdate={handleTimeUpdate}
+                      onLoadedMetadata={handleAudioLoadedMetadata}
+                      onEnded={() => {
+                        setIsPlaying(false);
+                        setCurrentTime(0);
+                      }}
+                    />
+                  )}
 
-                <div className="absolute top-4 left-3 bg-black/6 border border-emerald-500 text-emerald-400 rounded-full px-2 py-0.5 text-[9px] font-bold">PRONTO</div>
+                  <div className="absolute inset-x-3 bottom-24 flex items-center justify-center z-30 pointer-events-none">
+                    {currentSubtitle && (
+                      <p className="video-subtitle font-sans font-black text-sm tracking-wide text-center max-w-[90%]">
+                        {currentSubtitle}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="relative z-30 flex flex-col gap-2 p-3 bg-gradient-to-t from-black via-black/40 to-transparent">
+                    <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden">
+                      <div className="h-full bg-cyan-400" style={{ width: `${totalDuration ? (currentTime / totalDuration) * 100 : 0}%` }} />
+                    </div>
+                    <div className="flex items-center justify-between text-white text-[10px]">
+                      <div className="flex items-center gap-2">
+                        <button onClick={togglePlay}>{isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}</button>
+                        <span>{Math.floor(currentTime)}s / {Math.floor(totalDuration)}s</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={toggleMute}>{isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}</button>
+                        <button onClick={handleFullscreen}><Maximize2 className="h-3 w-3" /></button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="absolute top-7 left-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full px-2 py-0.5 text-[8px] font-bold z-30">PRONTO</div>
+                </div>
+              )}
+            </div>
+
+            {videoState === 'ready' && (
+              <div className={`flex gap-3 w-full justify-center z-20 transition-all duration-300 ${isZoomed ? 'max-w-[300px] sm:max-w-[340px] md:max-w-[370px]' : 'max-w-[250px]'}`}>
+                <button
+                  onClick={() => setIsZoomed(!isZoomed)}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold bg-[#1e293b]/50 border border-[#1e293b]/60 text-slate-200 rounded-xl hover:bg-[#1e293b] hover:text-white transition-all cursor-pointer pointer-events-auto shadow-sm"
+                >
+                  <Maximize2 className="h-3.5 w-3.5" />
+                  {isZoomed ? 'Reduzir' : 'Aumentar'}
+                </button>
+                {videoUrl && (
+                  <button
+                    onClick={handleDownload}
+                    disabled={isDownloading}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl hover:opacity-90 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto shadow-sm"
+                  >
+                    {isDownloading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
+                    {isDownloading ? 'Baixando...' : 'Baixar MP4'}
+                  </button>
+                )}
               </div>
             )}
           </div>
