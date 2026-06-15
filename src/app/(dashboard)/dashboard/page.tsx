@@ -233,13 +233,6 @@ export default function CreationDashboard() {
     }
   };
 
-  const handleFullscreen = () => {
-    if (phoneContainerRef.current?.requestFullscreen) {
-      phoneContainerRef.current.style.transform = 'none'; // reset rotation/zoom if any
-      phoneContainerRef.current.requestFullscreen();
-    }
-  };
-
   const handleDownload = async () => {
     if (!videoUrl) return;
     setIsDownloading(true);
@@ -414,6 +407,11 @@ export default function CreationDashboard() {
         <h2 className="text-lg font-bold text-white">Preview 9:16</h2>
         <div className="bg-[#0b1329]/20 backdrop-blur-md border border-[#1e293b]/40 rounded-3xl p-6 flex flex-col items-center justify-center min-h-[520px]">
           
+          {/* Placeholder to keep sidebar size stable when zoomed */}
+          {isZoomed && (
+            <div className="w-[250px] aspect-[9/16] rounded-[2.5rem] bg-slate-950/10 border-[8px] border-slate-900/10 pointer-events-none" />
+          )}
+
           <div className={isZoomed ? "fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-xl transition-all duration-300 p-4 gap-4" : "relative flex flex-col items-center gap-4"}>
             {isZoomed && (
               <div className="absolute inset-0 z-10 cursor-pointer" onClick={() => setIsZoomed(false)} />
@@ -525,7 +523,9 @@ export default function CreationDashboard() {
 
                   <div className="absolute inset-x-3 bottom-24 flex items-center justify-center z-30 pointer-events-none">
                     {currentSubtitle && (
-                      <p className="video-subtitle font-sans font-black text-sm tracking-wide text-center max-w-[90%]">
+                      <p className={`video-subtitle font-sans font-black tracking-wide text-center max-w-[90%] transition-all duration-300 ${
+                        isZoomed ? 'text-base' : 'text-sm'
+                      }`}>
                         {currentSubtitle}
                       </p>
                     )}
@@ -542,7 +542,9 @@ export default function CreationDashboard() {
                       </div>
                       <div className="flex items-center gap-2">
                         <button onClick={toggleMute}>{isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}</button>
-                        <button onClick={handleFullscreen}><Maximize2 className="h-3 w-3" /></button>
+                        <button onClick={() => setIsZoomed(!isZoomed)} className="hover:text-cyan-400 transition-colors">
+                          <Maximize2 className="h-3 w-3" />
+                        </button>
                       </div>
                     </div>
                   </div>
