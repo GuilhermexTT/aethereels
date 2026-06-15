@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# scratch directory
+/scratch/
+
+# credentials & secrets
+Docs/AWS REMOTION AETHEREELS.txt

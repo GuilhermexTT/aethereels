@@ -55,6 +55,9 @@ export default function CreationDashboard() {
 
   const [isZoomed, setIsZoomed] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isRendering, setIsRendering] = useState(false);
+  const [renderProgress, setRenderProgress] = useState(0);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [phoneTime, setPhoneTime] = useState('12:00');
 
   useEffect(() => {
@@ -234,24 +237,121 @@ export default function CreationDashboard() {
   };
 
   const handleDownload = async () => {
-    if (!videoUrl) return;
-    setIsDownloading(true);
+    if (!currentJobId) {
+      alert('Nenhum job de vídeo gerado para renderização.');
+      return;
+    }
+    setIsRendering(true);
+    setRenderProgress(0);
     try {
-      const response = await fetch(videoUrl);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = `video-${Date.now()}.mp4`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    } catch (error) {
-      console.error('Erro ao baixar vídeo:', error);
-      window.open(videoUrl, '_blank');
-    } finally {
-      setIsDownloading(false);
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      // 1. Disparar a Renderização na AWS Lambda chamando nossa Rota 1
+      const response = await fetch('/api/video/render', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+        },
+        body: JSON.stringify({
+          compositionId: 'Reels',
+          inputProps: {
+            audio_url: audioUrl,
+            video_urls: videoUrls,
+            subtitles: subtitles
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Falha ao solicitar renderização do vídeo.');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Erro interno ao iniciar renderização.');
+      }
+
+      const { renderId, bucketName } = data;
+
+      // Atualizar o status do job para 'rendering' no banco local
+      await supabase
+        .from('video_jobs')
+        .update({ status: 'rendering' })
+        .eq('id', currentJobId);
+
+      // 2. Monitorizar o Progresso chamando nossa Rota 2 (Polling a cada 3s)
+      const pollInterval = setInterval(async () => {
+        try {
+          const progressRes = await fetch(`/api/video/render/progress?renderId=${renderId}&bucketName=${bucketName}`, {
+            headers: {
+              ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+            }
+          });
+          
+          if (!progressRes.ok) return;
+
+          const progressData = await progressRes.json();
+
+          if (progressData.status === 'done') {
+            clearInterval(pollInterval);
+            setIsRendering(false);
+            setRenderProgress(100);
+
+            const finalVideoUrl = progressData.videoUrl;
+            setVideoUrl(finalVideoUrl);
+
+            // Atualizar banco local com o link do vídeo finalizado
+            await supabase
+              .from('video_jobs')
+              .update({ status: 'ready', video_url: finalVideoUrl })
+              .eq('id', currentJobId);
+
+            // Executar o download real do MP4 HD no navegador
+            try {
+              const fileResponse = await fetch(finalVideoUrl);
+              const blob = await fileResponse.blob();
+              const blobUrl = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = blobUrl;
+              a.download = `video-hd-${Date.now()}.mp4`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(blobUrl);
+            } catch (downloadErr) {
+              console.error('Erro ao baixar arquivo renderizado:', downloadErr);
+              window.open(finalVideoUrl, '_blank');
+            }
+
+          } else if (progressData.status === 'error') {
+            clearInterval(pollInterval);
+            setIsRendering(false);
+            alert(`A renderização em alta definição falhou: ${progressData.error}`);
+            
+            await supabase
+              .from('video_jobs')
+              .update({ status: 'failed' })
+              .eq('id', currentJobId);
+
+          } else if (progressData.status === 'rendering') {
+            setRenderProgress(progressData.progress || 0);
+          }
+        } catch (pollErr) {
+          console.error('Erro ao consultar progresso de renderização:', pollErr);
+        }
+      }, 3000);
+
+    } catch (error: any) {
+      console.error('Erro ao renderizar/baixar vídeo:', error);
+      setIsRendering(false);
+      alert(error.message);
     }
   };
 
@@ -292,6 +392,7 @@ export default function CreationDashboard() {
       if (!response.ok) throw new Error('Falha ao solicitar geração.');
       const data = await response.json();
       const jobId = data.job_id;
+      setCurrentJobId(jobId);
 
       decrementCredits(1);
       setLoadingProgress(25);
@@ -470,6 +571,18 @@ export default function CreationDashboard() {
                 </div>
               )}
 
+              {isRendering && (
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center gap-3 p-4 text-center">
+                  <Loader2 className="h-8 w-8 text-cyan-400 animate-spin" />
+                  <span className="text-xs font-semibold text-slate-200 leading-normal animate-pulse">
+                    Renderizando seu vídeo em alta definição... {renderProgress > 0 ? `(${renderProgress}%)` : ''}
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Isso pode levar até 2 minutos
+                  </span>
+                </div>
+              )}
+
               {videoState === 'ready' && (
                 <div className="w-full h-full relative flex flex-col justify-end group/player">
                   {isDynamicMode ? (
@@ -566,15 +679,15 @@ export default function CreationDashboard() {
                 {videoUrl && (
                   <button
                     onClick={handleDownload}
-                    disabled={isDownloading}
+                    disabled={isDownloading || isRendering}
                     className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl hover:opacity-90 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto shadow-sm"
                   >
-                    {isDownloading ? (
+                    {isDownloading || isRendering ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <Download className="h-3.5 w-3.5" />
                     )}
-                    {isDownloading ? 'Baixando...' : 'Baixar MP4'}
+                    {isDownloading || isRendering ? 'Baixando...' : 'Baixar MP4'}
                   </button>
                 )}
               </div>
