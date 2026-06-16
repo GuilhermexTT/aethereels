@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRenderProgress } from '@remotion/lambda';
+import { getRenderProgress } from '@remotion/lambda-client';
 
 // Mapear credenciais customizadas do .env.local para as esperadas internamente pelo AWS SDK do Remotion
 if (process.env.REMOTION_AWS_ACCESS_KEY_ID) {
