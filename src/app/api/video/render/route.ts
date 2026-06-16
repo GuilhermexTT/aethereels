@@ -42,6 +42,9 @@ export async function POST(request: Request) {
       codec: 'h264',
       privacy: 'public', // Permite que o link final seja acessível pelo utilizador
       inputProps: inputProps, // Injeta o roteiro e mídias dentro do template do Remotion
+      concurrency: process.env.REMOTION_AWS_CONCURRENCY 
+        ? parseInt(process.env.REMOTION_AWS_CONCURRENCY, 10) 
+        : 10, // Limita a concorrência para evitar rate limiting (Rate Exceeded) em contas AWS novas
     });
 
     // Retorna o ID da renderização para o frontend acompanhar o progresso
