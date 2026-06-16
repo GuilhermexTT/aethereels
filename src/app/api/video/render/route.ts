@@ -42,9 +42,6 @@ export async function POST(request: Request) {
       codec: 'h264',
       privacy: 'public', // Permite que o link final seja acessível pelo utilizador
       inputProps: inputProps, // Injeta o roteiro e mídias dentro do template do Remotion
-      concurrency: process.env.REMOTION_AWS_CONCURRENCY 
-        ? parseInt(process.env.REMOTION_AWS_CONCURRENCY, 10) 
-        : 3, // Limita a concorrência para evitar rate limiting (Rate Exceeded) em contas AWS novas (padrão alterado de 10 para 3)
       framesPerLambda: process.env.REMOTION_AWS_FRAMES_PER_LAMBDA
         ? parseInt(process.env.REMOTION_AWS_FRAMES_PER_LAMBDA, 10)
         : 120, // Renderizar 120 frames por Lambda (gera pouquíssimas funções simultâneas)
