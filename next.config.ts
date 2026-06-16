@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: [
+    "@remotion/lambda",
+    "@remotion/renderer",
+    "@remotion/bundler",
+    "esbuild"
+  ]
 };
 
 export default nextConfig;
