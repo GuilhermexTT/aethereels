@@ -18,6 +18,22 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ subtitles }) =
 
   if (!activeSubtitle || !activeSubtitle.text.trim()) return null;
 
+  // Divide o texto em palavras para o efeito de Karaokê
+  const words = activeSubtitle.text.trim().split(/\s+/);
+  const totalWords = words.length;
+  const subtitleDuration = activeSubtitle.end - activeSubtitle.start;
+  
+  // Calcula o elapsed time dentro da legenda ativa
+  const elapsed = currentTime - activeSubtitle.start;
+
+  // Calcula o índice da palavra ativa com base no tempo decorrido proporcionalmente
+  const activeWordIndex = totalWords > 1 && subtitleDuration > 0
+    ? Math.min(
+        Math.floor((elapsed / subtitleDuration) * totalWords),
+        totalWords - 1
+      )
+    : 0;
+
   return (
     <div
       style={{
@@ -28,33 +44,57 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ subtitles }) =
         bottom: 0,
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center',
-        padding: '0 80px',
+        alignItems: 'flex-end',
+        paddingBottom: '400px', // Posiciona a legenda a ~75-80% de altura (1920px total)
+        paddingLeft: '80px',
+        paddingRight: '80px',
         pointerEvents: 'none',
         zIndex: 10,
       }}
     >
+      {/* Importação das fontes Montserrat e Poppins */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&family=Poppins:wght@800;900&display=swap');
+      `}</style>
+
       <h1
         style={{
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+          fontFamily: '"Montserrat", "Poppins", "Arial Black", sans-serif',
           fontSize: '84px',
           fontWeight: 900,
           textTransform: 'uppercase',
-          color: '#FFFFFF',
           textAlign: 'center',
           lineHeight: 1.25,
           letterSpacing: '1.5px',
-          // Efeito premium de contorno preto forte (text-shadow de 4 direções) e leve sombra projetada
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          rowGap: '10px',
+          // Efeito premium de contorno preto forte (text-shadow de 4 direções) e sombra projetada marcante
           textShadow: `
-            -3px -3px 0 #000,
-             3px -3px 0 #000,
-            -3px  3px 0 #000,
-             3px  3px 0 #000,
-             4px  4px 10px rgba(0, 0, 0, 0.8)
+            -4px -4px 0 #000,
+             4px -4px 0 #000,
+            -4px  4px 0 #000,
+             4px  4px 0 #000,
+             0px  6px 15px rgba(0, 0, 0, 0.9)
           `,
         }}
       >
-        {activeSubtitle.text}
+        {words.map((word, index) => {
+          const isActive = index === activeWordIndex;
+          return (
+            <span
+              key={index}
+              style={{
+                color: isActive ? '#FFD700' : '#FFFFFF', // Amarelo viva para a palavra ativa, branco para o resto
+                marginRight: '20px',
+                display: 'inline-block',
+              }}
+            >
+              {word}
+            </span>
+          );
+        })}
       </h1>
     </div>
   );

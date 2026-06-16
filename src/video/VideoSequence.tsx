@@ -1,11 +1,52 @@
 import React from 'react';
-import { Sequence, Video } from 'remotion';
+import { Sequence, Video, Img, useCurrentFrame, interpolate } from 'remotion';
 import { SubtitleItem } from './types';
 
 interface VideoSequenceProps {
   video_urls: string[];
   subtitles: Omit<SubtitleItem, 'start_time' | 'duration'>[];
 }
+
+const SceneItem: React.FC<{
+  src: string;
+  durationInFrames: number;
+}> = ({ src, durationInFrames }) => {
+  const frame = useCurrentFrame();
+
+  // Fade-in suave de 15 frames (0.5s a 30fps) no início de cada cena
+  const opacity = interpolate(frame, [0, 15], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+
+  // Efeito Ken Burns: Zoom-in sutil e contínuo de 1.0 a 1.12 ao longo de toda a duração da cena
+  const scale = interpolate(frame, [0, durationInFrames], [1.0, 1.12], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+
+  const isImage = /\.(jpg|jpeg|png|webp|gif)($|\?)/i.test(src);
+
+  const style: React.CSSProperties = {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    opacity,
+    transform: `scale(${scale})`,
+  };
+
+  if (isImage) {
+    return <Img src={src} style={style} />;
+  }
+
+  return (
+    <Video
+      src={src}
+      muted
+      style={style}
+    />
+  );
+};
 
 export const VideoSequence: React.FC<VideoSequenceProps> = ({ video_urls, subtitles }) => {
   if (video_urls.length === 0) return null;
@@ -24,15 +65,7 @@ export const VideoSequence: React.FC<VideoSequenceProps> = ({ video_urls, subtit
             durationInFrames={durationInFrames}
             layout="none"
           >
-            <Video
-              src={videoSrc}
-              muted
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-              }}
-            />
+            <SceneItem src={videoSrc} durationInFrames={durationInFrames} />
           </Sequence>
         );
       })}

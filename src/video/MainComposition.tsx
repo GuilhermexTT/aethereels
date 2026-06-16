@@ -32,6 +32,20 @@ export const MainComposition: React.FC = () => {
       {/* 2. Sequenciador de clipes (Pexels) */}
       <VideoSequence video_urls={video_urls || []} subtitles={normalizedSubtitles} />
 
+      {/* Camada uniforme preta de opacidade para contraste (40%) */}
+      <div 
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          zIndex: 5,
+          pointerEvents: 'none',
+        }}
+      />
+
       {/* 3. Overlay de Legendas Dinâmicas */}
       <SubtitleOverlay subtitles={normalizedSubtitles} />
     </div>

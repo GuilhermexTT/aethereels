@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import {
   Sparkles,
   Send,
@@ -54,6 +54,151 @@ export default function CreationDashboard() {
   const [scriptData, setScriptData] = useState<any>(null);
 
   const [isZoomed, setIsZoomed] = useState(false);
+  const [placeholderRect, setPlaceholderRect] = useState<DOMRect | null>(null);
+  const [flipStyle, setFlipStyle] = useState<React.CSSProperties>({});
+  const firstRectRef = useRef<DOMRect | null>(null);
+  const modalPlaceholderRef = useRef<HTMLDivElement>(null);
+
+  const handleZoomIn = () => {
+    if (phoneContainerRef.current) {
+      firstRectRef.current = phoneContainerRef.current.getBoundingClientRect();
+    }
+    setIsZoomed(true);
+  };
+
+  const handleZoomOut = () => {
+    if (phoneContainerRef.current) {
+      firstRectRef.current = phoneContainerRef.current.getBoundingClientRect();
+    }
+    setIsZoomed(false);
+  };
+
+  useLayoutEffect(() => {
+    const el = phoneContainerRef.current;
+    if (!el) return;
+
+    if (isZoomed) {
+      const placeholder = modalPlaceholderRef.current;
+      if (placeholder) {
+        const lastRect = placeholder.getBoundingClientRect();
+        setPlaceholderRect(lastRect);
+
+        const firstRect = firstRectRef.current;
+        if (firstRect) {
+          const deltaX = firstRect.left - lastRect.left;
+          const deltaY = firstRect.top - lastRect.top;
+          const scaleX = firstRect.width / lastRect.width;
+          const scaleY = firstRect.height / lastRect.height;
+
+          setFlipStyle({
+            position: 'fixed',
+            top: lastRect.top,
+            left: lastRect.left,
+            width: lastRect.width,
+            height: lastRect.height,
+            transform: `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY})`,
+            transformOrigin: 'top left',
+            transition: 'none',
+            zIndex: 60,
+            margin: 0,
+          });
+
+          // Force reflow
+          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+          el.offsetHeight;
+
+          const raf1 = requestAnimationFrame(() => {
+            const raf2 = requestAnimationFrame(() => {
+              setFlipStyle({
+                position: 'fixed',
+                top: lastRect.top,
+                left: lastRect.left,
+                width: lastRect.width,
+                height: lastRect.height,
+                transform: 'translate(0px, 0px) scale(1)',
+                transformOrigin: 'top left',
+                transition: 'transform 0.45s cubic-bezier(0.34, 1.3, 0.64, 1)',
+                zIndex: 60,
+                margin: 0,
+              });
+            });
+            return () => cancelAnimationFrame(raf2);
+          });
+
+          const timer = setTimeout(() => {
+            setFlipStyle({
+              position: 'fixed',
+              top: lastRect.top,
+              left: lastRect.left,
+              width: lastRect.width,
+              height: lastRect.height,
+              transform: 'none',
+              zIndex: 60,
+              margin: 0,
+            });
+          }, 450);
+
+          return () => {
+            cancelAnimationFrame(raf1);
+            clearTimeout(timer);
+          };
+        }
+      }
+    } else {
+      const firstRect = firstRectRef.current; // The zoomed rect
+      const lastRect = el.getBoundingClientRect(); // The sidebar rect
+
+      if (firstRect) {
+        const deltaX = firstRect.left - lastRect.left;
+        const deltaY = firstRect.top - lastRect.top;
+        const scaleX = firstRect.width / lastRect.width;
+        const scaleY = firstRect.height / lastRect.height;
+
+        setFlipStyle({
+          transform: `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY})`,
+          transformOrigin: 'top left',
+          transition: 'none',
+        });
+
+        // Force reflow
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        el.offsetHeight;
+
+        const raf1 = requestAnimationFrame(() => {
+          const raf2 = requestAnimationFrame(() => {
+            setFlipStyle({
+              transform: 'translate(0px, 0px) scale(1)',
+              transformOrigin: 'top left',
+              transition: 'transform 0.45s cubic-bezier(0.34, 1.3, 0.64, 1)',
+            });
+          });
+          return () => cancelAnimationFrame(raf2);
+        });
+
+        const timer = setTimeout(() => {
+          setFlipStyle({});
+          setPlaceholderRect(null);
+        }, 450);
+
+        return () => {
+          cancelAnimationFrame(raf1);
+          clearTimeout(timer);
+        };
+      }
+    }
+  }, [isZoomed]);
+
+  useEffect(() => {
+    if (!isZoomed) return;
+    const updateRect = () => {
+      if (modalPlaceholderRef.current) {
+        setPlaceholderRect(modalPlaceholderRef.current.getBoundingClientRect());
+      }
+    };
+    window.addEventListener('resize', updateRect);
+    return () => window.removeEventListener('resize', updateRect);
+  }, [isZoomed]);
+
   const [isDownloading, setIsDownloading] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
   const [renderProgress, setRenderProgress] = useState(0);
@@ -507,40 +652,39 @@ export default function CreationDashboard() {
         </div>
       </section>
 
-      <section className="col-span-12 lg:col-span-4 flex flex-col gap-6">
+      <section className="col-span-12 lg:col-span-4 flex flex-col gap-6 relative">
         <h2 className="text-lg font-bold text-white">Preview 9:16</h2>
         <div className="bg-[#0b1329]/20 backdrop-blur-md border border-[#1e293b]/40 rounded-3xl p-6 flex flex-col items-center justify-center min-h-[520px]">
           
           {/* Placeholder to keep sidebar size stable when zoomed */}
           {isZoomed && (
-            <div className="w-[250px] aspect-[9/16] rounded-[2.5rem] bg-slate-950/10 border-[8px] border-slate-900/10 pointer-events-none" />
+            <div className="w-[250px] aspect-[9/16] rounded-[2.5rem] bg-slate-950/20 border-2 border-dashed border-slate-800/40 pointer-events-none flex flex-col items-center justify-center p-4 text-center">
+              <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase">Visualizando</span>
+            </div>
           )}
 
-          <div className={isZoomed ? "fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-xl transition-all duration-300 p-4 gap-4" : "relative flex flex-col items-center gap-4"}>
-            {isZoomed && (
-              <div className="absolute inset-0 z-10 cursor-pointer" onClick={() => setIsZoomed(false)} />
-            )}
-
-            {isZoomed && (
-              <button 
-                onClick={() => setIsZoomed(false)}
-                className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 border border-white/10 text-white rounded-full transition-all z-50 pointer-events-auto cursor-pointer"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            )}
-
+          <div className="relative flex flex-col items-center gap-4">
             <div 
               ref={phoneContainerRef} 
-              className={`relative z-20 aspect-[9/16] rounded-[2.5rem] border-[8px] border-slate-955 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col justify-end transition-all duration-300 ${
-                isZoomed ? 'w-[300px] sm:w-[340px] md:w-[370px]' : 'w-[250px]'
-              }`}
+              className="relative z-25 aspect-[9/16] rounded-[2.5rem] border-[8px] border-slate-955 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col justify-end w-[250px]"
+              style={{
+                ...flipStyle,
+                ...(isZoomed && placeholderRect && !flipStyle.position ? {
+                  position: 'fixed',
+                  top: placeholderRect.top,
+                  left: placeholderRect.left,
+                  width: placeholderRect.width,
+                  height: placeholderRect.height,
+                  zIndex: 60,
+                  margin: 0,
+                } : {})
+              }}
             >
               {/* Dynamic Island / Notch */}
               <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-40 flex items-center justify-center pointer-events-none">
                 <div className="w-1.5 h-1.5 bg-slate-900 rounded-full mr-1"></div>
-                <div className="w-3.5 h-0.5 bg-slate-950 rounded-full mx-1"></div>
-                <div className="w-1.5 h-1.5 bg-blue-950/40 rounded-full ml-1"></div>
+                <div className="w-3.5 h-0.5 bg-slate-955 rounded-full mx-1"></div>
+                <div className="w-1.5 h-1.5 bg-blue-955/40 rounded-full ml-1"></div>
               </div>
 
               {/* Status Bar */}
@@ -658,7 +802,7 @@ export default function CreationDashboard() {
                       </div>
                       <div className="flex items-center gap-2">
                         <button onClick={toggleMute}>{isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}</button>
-                        <button onClick={() => setIsZoomed(!isZoomed)} className="hover:text-cyan-400 transition-colors">
+                        <button onClick={isZoomed ? handleZoomOut : handleZoomIn} className="hover:text-cyan-400 transition-colors">
                           <Maximize2 className="h-3 w-3" />
                         </button>
                       </div>
@@ -670,14 +814,14 @@ export default function CreationDashboard() {
               )}
             </div>
 
-            {videoState === 'ready' && (
-              <div className={`flex gap-3 w-full justify-center z-20 transition-all duration-300 ${isZoomed ? 'max-w-[300px] sm:max-w-[340px] md:max-w-[370px]' : 'max-w-[250px]'}`}>
+            {videoState === 'ready' && !isZoomed && (
+              <div className="flex gap-3 w-full justify-center z-20 max-w-[250px]">
                 <button
-                  onClick={() => setIsZoomed(!isZoomed)}
+                  onClick={handleZoomIn}
                   className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold bg-[#1e293b]/50 border border-[#1e293b]/60 text-slate-200 rounded-xl hover:bg-[#1e293b] hover:text-white transition-all cursor-pointer pointer-events-auto shadow-sm"
                 >
                   <Maximize2 className="h-3.5 w-3.5" />
-                  {isZoomed ? 'Reduzir' : 'Aumentar'}
+                  Aumentar
                 </button>
                 <button
                   onClick={() => {
@@ -701,6 +845,77 @@ export default function CreationDashboard() {
             )}
           </div>
         </div>
+
+        {/* Modal Backdrop overlay */}
+        {isZoomed && (
+          <div 
+            className="fixed inset-0 z-40 bg-[#050b14]/85 backdrop-blur-md transition-opacity duration-300 pointer-events-auto cursor-pointer"
+            onClick={handleZoomOut}
+          />
+        )}
+
+        {/* Modal Card Centered container */}
+        {isZoomed && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <div className="bg-[#0b1329] border border-[#1e293b]/60 rounded-3xl p-8 flex flex-col items-center max-w-[480px] w-full relative shadow-2xl pointer-events-auto">
+              {/* Close button */}
+              <button 
+                onClick={handleZoomOut}
+                className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-full transition-all cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              {/* Header */}
+              <div className="text-center mb-6">
+                <h3 className="text-white font-bold text-lg">Preview 9:16</h3>
+                <p className="text-slate-400 text-xs mt-1">Veja como seu vídeo ficará no formato vertical (9:16).</p>
+              </div>
+
+              {/* Modal Placeholder for the Phone mockup */}
+              <div 
+                ref={modalPlaceholderRef}
+                className="w-[300px] sm:w-[340px] md:w-[370px] aspect-[9/16] bg-slate-950/20 border-2 border-dashed border-slate-800/20 rounded-[2.5rem] pointer-events-none mb-6"
+              />
+
+              {/* Buttons row */}
+              {videoState === 'ready' && (
+                <div className="flex gap-3 w-full justify-center mb-4 max-w-[370px]">
+                  <button
+                    onClick={() => {
+                      if (videoUrl && videoUrl.includes('amazonaws.com')) {
+                        window.open(videoUrl, '_blank');
+                      } else {
+                        handleDownload();
+                      }
+                    }}
+                    disabled={isDownloading || isRendering}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-4 py-3 text-xs font-semibold bg-[#0e1629] border border-slate-700/50 hover:bg-[#1e293b] text-white rounded-xl active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  >
+                    {isDownloading || isRendering ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
+                    {isRendering ? `Criando... (${renderProgress}%)` : 'Baixar MP4'}
+                  </button>
+                  
+                  <button
+                    onClick={handleZoomOut}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-4 py-3 text-xs font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              )}
+
+              {/* Info Text */}
+              <p className="text-[10px] text-slate-500 text-center">
+                Seu vídeo está pronto! Faça o download ou feche para continuar.
+              </p>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
