@@ -54,150 +54,108 @@ export default function CreationDashboard() {
   const [scriptData, setScriptData] = useState<any>(null);
 
   const [isZoomed, setIsZoomed] = useState(false);
-  const [placeholderRect, setPlaceholderRect] = useState<DOMRect | null>(null);
-  const [flipStyle, setFlipStyle] = useState<React.CSSProperties>({});
-  const firstRectRef = useRef<DOMRect | null>(null);
+  const [zoomState, setZoomState] = useState<'idle' | 'zooming-in' | 'zoomed' | 'zooming-out'>('idle');
+  const [transitionStyle, setTransitionStyle] = useState<React.CSSProperties>({});
+  const sidebarWrapperRef = useRef<HTMLDivElement>(null);
   const modalPlaceholderRef = useRef<HTMLDivElement>(null);
 
   const handleZoomIn = () => {
     if (phoneContainerRef.current) {
-      firstRectRef.current = phoneContainerRef.current.getBoundingClientRect();
+      const rect = phoneContainerRef.current.getBoundingClientRect();
+      setTransitionStyle({
+        position: 'fixed',
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        zIndex: 60,
+        margin: 0,
+        transition: 'none',
+      });
+      setIsZoomed(true);
+      setZoomState('zooming-in');
     }
-    setIsZoomed(true);
   };
 
   const handleZoomOut = () => {
     if (phoneContainerRef.current) {
-      firstRectRef.current = phoneContainerRef.current.getBoundingClientRect();
+      setZoomState('zooming-out');
+      const targetRect = sidebarWrapperRef.current
+        ? sidebarWrapperRef.current.getBoundingClientRect()
+        : { top: 0, left: 0, width: 250, height: 444 };
+      
+      setTransitionStyle({
+        position: 'fixed',
+        top: targetRect.top,
+        left: targetRect.left,
+        width: targetRect.width,
+        height: targetRect.height,
+        zIndex: 60,
+        margin: 0,
+        transition: 'top 0.45s cubic-bezier(0.16, 1, 0.3, 1), left 0.45s cubic-bezier(0.16, 1, 0.3, 1), width 0.45s cubic-bezier(0.16, 1, 0.3, 1), height 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
+      });
+
+      const timer = setTimeout(() => {
+        setZoomState('idle');
+        setIsZoomed(false);
+        setTransitionStyle({});
+      }, 450);
+
+      return () => clearTimeout(timer);
     }
-    setIsZoomed(false);
   };
 
   useLayoutEffect(() => {
-    const el = phoneContainerRef.current;
-    if (!el) return;
-
-    if (isZoomed) {
+    if (zoomState === 'zooming-in') {
       const placeholder = modalPlaceholderRef.current;
-      if (placeholder) {
-        const lastRect = placeholder.getBoundingClientRect();
-        setPlaceholderRect(lastRect);
-
-        const firstRect = firstRectRef.current;
-        if (firstRect) {
-          const deltaX = firstRect.left - lastRect.left;
-          const deltaY = firstRect.top - lastRect.top;
-          const scaleX = firstRect.width / lastRect.width;
-          const scaleY = firstRect.height / lastRect.height;
-
-          setFlipStyle({
-            position: 'fixed',
-            top: lastRect.top,
-            left: lastRect.left,
-            width: lastRect.width,
-            height: lastRect.height,
-            transform: `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY})`,
-            transformOrigin: 'top left',
-            transition: 'none',
-            zIndex: 60,
-            margin: 0,
-          });
-
-          // Force reflow
-          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-          el.offsetHeight;
-
-          const raf1 = requestAnimationFrame(() => {
-            const raf2 = requestAnimationFrame(() => {
-              setFlipStyle({
-                position: 'fixed',
-                top: lastRect.top,
-                left: lastRect.left,
-                width: lastRect.width,
-                height: lastRect.height,
-                transform: 'translate(0px, 0px) scale(1)',
-                transformOrigin: 'top left',
-                transition: 'transform 0.45s cubic-bezier(0.34, 1.3, 0.64, 1)',
-                zIndex: 60,
-                margin: 0,
-              });
-            });
-            return () => cancelAnimationFrame(raf2);
-          });
-
-          const timer = setTimeout(() => {
-            setFlipStyle({
-              position: 'fixed',
-              top: lastRect.top,
-              left: lastRect.left,
-              width: lastRect.width,
-              height: lastRect.height,
-              transform: 'none',
-              zIndex: 60,
-              margin: 0,
-            });
-          }, 450);
-
-          return () => {
-            cancelAnimationFrame(raf1);
-            clearTimeout(timer);
-          };
-        }
-      }
-    } else {
-      const firstRect = firstRectRef.current; // The zoomed rect
-      const lastRect = el.getBoundingClientRect(); // The sidebar rect
-
-      if (firstRect) {
-        const deltaX = firstRect.left - lastRect.left;
-        const deltaY = firstRect.top - lastRect.top;
-        const scaleX = firstRect.width / lastRect.width;
-        const scaleY = firstRect.height / lastRect.height;
-
-        setFlipStyle({
-          transform: `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY})`,
-          transformOrigin: 'top left',
-          transition: 'none',
-        });
-
+      const el = phoneContainerRef.current;
+      if (placeholder && el) {
+        const targetRect = placeholder.getBoundingClientRect();
+        
         // Force reflow
         // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         el.offsetHeight;
 
-        const raf1 = requestAnimationFrame(() => {
-          const raf2 = requestAnimationFrame(() => {
-            setFlipStyle({
-              transform: 'translate(0px, 0px) scale(1)',
-              transformOrigin: 'top left',
-              transition: 'transform 0.45s cubic-bezier(0.34, 1.3, 0.64, 1)',
-            });
-          });
-          return () => cancelAnimationFrame(raf2);
+        setTransitionStyle({
+          position: 'fixed',
+          top: targetRect.top,
+          left: targetRect.left,
+          width: targetRect.width,
+          height: targetRect.height,
+          zIndex: 60,
+          margin: 0,
+          transition: 'top 0.45s cubic-bezier(0.16, 1, 0.3, 1), left 0.45s cubic-bezier(0.16, 1, 0.3, 1), width 0.45s cubic-bezier(0.16, 1, 0.3, 1), height 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
         });
 
         const timer = setTimeout(() => {
-          setFlipStyle({});
-          setPlaceholderRect(null);
+          setZoomState('zoomed');
         }, 450);
 
-        return () => {
-          cancelAnimationFrame(raf1);
-          clearTimeout(timer);
-        };
+        return () => clearTimeout(timer);
       }
     }
-  }, [isZoomed]);
+  }, [zoomState]);
 
   useEffect(() => {
-    if (!isZoomed) return;
-    const updateRect = () => {
+    if (zoomState !== 'zoomed') return;
+    const handleResize = () => {
       if (modalPlaceholderRef.current) {
-        setPlaceholderRect(modalPlaceholderRef.current.getBoundingClientRect());
+        const rect = modalPlaceholderRef.current.getBoundingClientRect();
+        setTransitionStyle({
+          position: 'fixed',
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+          zIndex: 60,
+          margin: 0,
+          transition: 'none',
+        });
       }
     };
-    window.addEventListener('resize', updateRect);
-    return () => window.removeEventListener('resize', updateRect);
-  }, [isZoomed]);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [zoomState]);
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
@@ -654,37 +612,32 @@ export default function CreationDashboard() {
 
       <section className="col-span-12 lg:col-span-4 flex flex-col gap-6 relative">
         <h2 className="text-lg font-bold text-white">Preview 9:16</h2>
-        <div className="bg-[#0b1329]/20 backdrop-blur-md border border-[#1e293b]/40 rounded-3xl p-6 flex flex-col items-center justify-center min-h-[520px]">
-          
-          {/* Placeholder to keep sidebar size stable when zoomed */}
-          {isZoomed && (
-            <div className="w-[250px] aspect-[9/16] rounded-[2.5rem] bg-slate-950/20 border-2 border-dashed border-slate-800/40 pointer-events-none flex flex-col items-center justify-center p-4 text-center">
-              <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase">Visualizando</span>
-            </div>
-          )}
+        <div className={`bg-[#0b1329]/20 border border-[#1e293b]/40 rounded-3xl p-6 flex flex-col items-center gap-6 ${isZoomed ? '' : 'backdrop-blur-md'}`}>
+          {/* Sidebar wrapper that acts as the layout anchor and visual placeholder */}
+          <div 
+            ref={sidebarWrapperRef} 
+            className="relative w-[250px] aspect-[9/16] flex items-center justify-center"
+          >
+            {/* Visual dashed outline shown only when the phone has zoomed away */}
+            {zoomState !== 'idle' && (
+              <div className="absolute inset-0 rounded-[2.5rem] bg-slate-950/20 border-2 border-dashed border-slate-800/40 pointer-events-none flex flex-col items-center justify-center p-4 text-center">
+                <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase">Visualizando</span>
+              </div>
+            )}
 
-          <div className="relative flex flex-col items-center gap-4">
+            {/* The actual phone mockup */}
             <div 
               ref={phoneContainerRef} 
-              className="relative z-25 aspect-[9/16] rounded-[2.5rem] border-[8px] border-slate-955 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col justify-end w-[250px]"
-              style={{
-                ...flipStyle,
-                ...(isZoomed && placeholderRect && !flipStyle.position ? {
-                  position: 'fixed',
-                  top: placeholderRect.top,
-                  left: placeholderRect.left,
-                  width: placeholderRect.width,
-                  height: placeholderRect.height,
-                  zIndex: 60,
-                  margin: 0,
-                } : {})
-              }}
+              className={`aspect-[9/16] rounded-[2.5rem] border-[8px] border-slate-950 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col justify-end ${
+                zoomState === 'idle' ? 'relative w-full h-full z-25' : ''
+              }`}
+              style={transitionStyle}
             >
               {/* Dynamic Island / Notch */}
               <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-40 flex items-center justify-center pointer-events-none">
                 <div className="w-1.5 h-1.5 bg-slate-900 rounded-full mr-1"></div>
-                <div className="w-3.5 h-0.5 bg-slate-955 rounded-full mx-1"></div>
-                <div className="w-1.5 h-1.5 bg-blue-955/40 rounded-full ml-1"></div>
+                <div className="w-3.5 h-0.5 bg-slate-900 rounded-full mx-1"></div>
+                <div className="w-1.5 h-1.5 bg-blue-900/40 rounded-full ml-1"></div>
               </div>
 
               {/* Status Bar */}
@@ -813,9 +766,10 @@ export default function CreationDashboard() {
                 </div>
               )}
             </div>
+          </div>
 
-            {videoState === 'ready' && !isZoomed && (
-              <div className="flex gap-3 w-full justify-center z-20 max-w-[250px]">
+          {videoState === 'ready' && !isZoomed && (
+            <div className="flex gap-3 w-full justify-center z-20 max-w-[250px]">
                 <button
                   onClick={handleZoomIn}
                   className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold bg-[#1e293b]/50 border border-[#1e293b]/60 text-slate-200 rounded-xl hover:bg-[#1e293b] hover:text-white transition-all cursor-pointer pointer-events-auto shadow-sm"
@@ -843,13 +797,14 @@ export default function CreationDashboard() {
                 </button>
               </div>
             )}
-          </div>
         </div>
 
         {/* Modal Backdrop overlay */}
         {isZoomed && (
           <div 
-            className="fixed inset-0 z-40 bg-[#050b14]/85 backdrop-blur-md transition-opacity duration-300 pointer-events-auto cursor-pointer"
+            className={`fixed inset-0 z-40 bg-[#050b14]/85 pointer-events-auto cursor-pointer ${
+              zoomState === 'zooming-out' ? 'animate-backdrop-out' : 'animate-backdrop-in'
+            }`}
             onClick={handleZoomOut}
           />
         )}
@@ -857,7 +812,9 @@ export default function CreationDashboard() {
         {/* Modal Card Centered container */}
         {isZoomed && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-            <div className="bg-[#0b1329] border border-[#1e293b]/60 rounded-3xl p-8 flex flex-col items-center max-w-[480px] w-full relative shadow-2xl pointer-events-auto">
+            <div className={`bg-[#0b1329] border border-[#1e293b]/60 rounded-3xl p-8 flex flex-col items-center max-w-[480px] w-full relative shadow-2xl pointer-events-auto ${
+              zoomState === 'zooming-out' ? 'animate-card-out' : 'animate-card-in'
+            }`}>
               {/* Close button */}
               <button 
                 onClick={handleZoomOut}
