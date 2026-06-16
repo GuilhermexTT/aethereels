@@ -43,10 +43,12 @@ export async function GET(request: Request) {
 
     // Se terminar tudo, retorna o link final do vídeo hospedado no S3
     if (progress.done) {
+      const region = (process.env.REMOTION_AWS_REGION as any) || 'us-east-2';
+      const s3Url = `https://${bucketName}.s3.${region}.amazonaws.com/${progress.outKey}`;
       return NextResponse.json({
         status: 'done',
         progress: 100,
-        videoUrl: progress.outKey, // Link direto do .mp4 pronto!
+        videoUrl: s3Url, // Link direto do .mp4 pronto!
       });
     }
 
