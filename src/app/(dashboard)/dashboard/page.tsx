@@ -306,6 +306,7 @@ export default function CreationDashboard() {
 
             const finalVideoUrl = progressData.videoUrl;
             setVideoUrl(finalVideoUrl);
+            setIsDynamicMode(false); // Switch the player to the static compiled MP4!
 
             // Atualizar banco local com o link do vídeo finalizado
             await supabase
@@ -313,7 +314,7 @@ export default function CreationDashboard() {
               .update({ status: 'ready', video_url: finalVideoUrl })
               .eq('id', currentJobId);
 
-            // Executar o download real do MP4 HD no navegador
+            // Tentar download direto no navegador via Blob (funciona com CORS correto)
             try {
               const fileResponse = await fetch(finalVideoUrl);
               const blob = await fileResponse.blob();
@@ -325,9 +326,11 @@ export default function CreationDashboard() {
               a.click();
               document.body.removeChild(a);
               URL.revokeObjectURL(blobUrl);
+              alert("Vídeo baixado com sucesso!");
             } catch (downloadErr) {
               console.error('Erro ao baixar arquivo renderizado:', downloadErr);
-              window.open(finalVideoUrl, '_blank');
+              // Se falhar o download direto (ex. CORS restrito), avisa o usuário para clicar de novo no botão (que agora vai abrir a URL no _blank de forma síncrona, evitando o bloqueador do navegador)
+              alert("Vídeo renderizado com sucesso! Clique no botão 'Baixar MP4' novamente para abrir e salvar o vídeo.");
             }
 
           } else if (progressData.status === 'error') {
@@ -676,20 +679,24 @@ export default function CreationDashboard() {
                   <Maximize2 className="h-3.5 w-3.5" />
                   {isZoomed ? 'Reduzir' : 'Aumentar'}
                 </button>
-                {videoUrl && (
-                  <button
-                    onClick={handleDownload}
-                    disabled={isDownloading || isRendering}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl hover:opacity-90 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto shadow-sm"
-                  >
-                    {isDownloading || isRendering ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Download className="h-3.5 w-3.5" />
-                    )}
-                    {isDownloading || isRendering ? 'Baixando...' : 'Baixar MP4'}
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    if (videoUrl && videoUrl.includes('amazonaws.com')) {
+                      window.open(videoUrl, '_blank');
+                    } else {
+                      handleDownload();
+                    }
+                  }}
+                  disabled={isDownloading || isRendering}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl hover:opacity-90 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto shadow-sm"
+                >
+                  {isDownloading || isRendering ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
+                  {isRendering ? `Criando... (${renderProgress}%)` : 'Baixar MP4'}
+                </button>
               </div>
             )}
           </div>
