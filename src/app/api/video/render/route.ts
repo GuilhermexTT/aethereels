@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       inputProps: inputProps, // Injeta o roteiro e mídias dentro do template do Remotion
       concurrency: process.env.REMOTION_AWS_CONCURRENCY
         ? parseInt(process.env.REMOTION_AWS_CONCURRENCY, 10)
-        : 5, // Limita a 5 funções simultâneas para evitar estouro de limite de novas contas AWS (limite default 10)
+        : 8, // Limita a 8 funções simultâneas para evitar estouro de limite de novas contas AWS (limite default 10)
     });
 
     // Retorna o ID da renderização para o frontend acompanhar o progresso
