@@ -1,5 +1,5 @@
 import { loadEnvConfig } from '@next/env';
-import { deployFunction, deploySite, getOrCreateBucket, deployRole } from '@remotion/lambda';
+import { deployFunction, deploySite, getOrCreateBucket } from '@remotion/lambda';
 import path from 'path';
 
 // Carregar variáveis do arquivo .env.local
@@ -33,23 +33,14 @@ async function run() {
   console.log(`✅ Bucket S3: ${bucketName} (${bucketExisted ? 'já existia' : 'criado com sucesso'})`);
 
   // 1.5. Configurar ou obter a Role do IAM
-  let roleArn = process.env.REMOTION_AWS_ROLE_ARN;
-  if (roleArn) {
-    console.log(`🔑 Usando Role do IAM fornecida no .env.local: ${roleArn}`);
+  const customRoleArn = process.env.REMOTION_AWS_ROLE_ARN;
+  if (customRoleArn) {
+    console.log(`🔑 Usando Role do IAM fornecida no .env.local: ${customRoleArn}`);
   } else {
-    console.log('🔑 Tentando criar/obter a Role do IAM (remotion-lambda-role) automaticamente...');
-    try {
-      const roleResult = await deployRole({ region });
-      roleArn = roleResult.roleArn;
-      console.log(`✅ Role do IAM configurada: ${roleArn}`);
-    } catch (roleError: any) {
-      console.error('❌ Falha ao configurar a Role do IAM automaticamente.');
-      console.error(`Detalhes do erro: ${roleError.message}`);
-      console.error('\nComo sua conta é recém-criada ou possui permissões restritas, você pode criar a Role manualmente no console da AWS.');
-      console.error('Depois de criada, defina REMOTION_AWS_ROLE_ARN=arn:aws:iam::... no seu arquivo .env.local e rode o script novamente.');
-      console.error('\nConsulte a resposta no chat para obter as instruções e políticas exatas de criação manual da Role.');
-      process.exit(1);
-    }
+    console.warn('⚠️ REMOTION_AWS_ROLE_ARN não foi definida no .env.local.');
+    console.warn('O Remotion usará o comportamento padrão tentando encontrar a role "remotion-lambda-role".');
+    console.warn('Se o deploy falhar com erro de permissão da Role, certifique-se de criá-la manualmente na AWS');
+    console.warn('e fornecer a chave REMOTION_AWS_ROLE_ARN no seu arquivo .env.local.');
   }
 
   // 2. Fazer deploy da função Lambda do Remotion
@@ -60,7 +51,7 @@ async function run() {
     timeoutInSeconds: 240, // Timeout estendido para renderização de reels
     memorySizeInMb: 2048,  // Tamanho de memória recomendado para boa performance/custo
     diskSizeInMb: 512,
-    roleArn,
+    customRoleArn,
   });
   console.log(`✅ Função Lambda: ${functionName} (${funcExisted ? 'já existia' : 'criada/atualizada com sucesso'})`);
 
