@@ -29,6 +29,7 @@ export async function GET(request: Request) {
     const progress = await getRenderProgress({
       region: (process.env.REMOTION_AWS_REGION as any) || 'us-east-2',
       bucketName: bucketName,
+      functionName: process.env.REMOTION_AWS_FUNCTION!,
       renderId: renderId,
     });
 
