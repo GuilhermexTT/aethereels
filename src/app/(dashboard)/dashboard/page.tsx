@@ -194,6 +194,23 @@ export default function CreationDashboard() {
   const currentTimeRef = useRef(0);
   const prevActiveVideoIndexRef = useRef<number>(0);
 
+  const [phoneWidth, setPhoneWidth] = useState(250);
+
+  useEffect(() => {
+    const updateWidth = () => {
+      if (phoneContainerRef.current) {
+        setPhoneWidth(phoneContainerRef.current.offsetWidth);
+      }
+    };
+    updateWidth();
+    const timer = setTimeout(updateWidth, 500);
+    window.addEventListener('resize', updateWidth);
+    return () => {
+      window.removeEventListener('resize', updateWidth);
+      clearTimeout(timer);
+    };
+  }, [isZoomed, zoomState]);
+
   useEffect(() => {
     currentTimeRef.current = currentTime;
   }, [currentTime]);
@@ -685,11 +702,32 @@ export default function CreationDashboard() {
 
               {videoState === 'ready' && (
                 <div className="w-full h-full relative flex flex-col justify-end group/player">
+                  <style>{`
+                    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&family=Poppins:wght@800;900&display=swap');
+                    
+                    @keyframes previewFadeIn {
+                      from { opacity: 0; }
+                      to { opacity: 1; }
+                    }
+                    @keyframes previewKenBurns {
+                      from { transform: scale(1.0); }
+                      to { transform: scale(1.12); }
+                    }
+                  `}</style>
+
                   {isDynamicMode ? (
                     videoUrls.map((url, idx) => {
                       const videoSrc = typeof url === 'object' && url !== null 
                         ? String((url as any).url || (url as any).link || '') 
                         : String(url);
+                      
+                      const isActive = idx === activeVideoIndex;
+                      
+                      // Encontra o index da legenda ativa correspondente a esta cena
+                      const activeSubIndex = subtitles.findIndex(sub => currentTime >= sub.start && currentTime <= sub.end);
+                      const activeSub = activeSubIndex !== -1 ? subtitles[activeSubIndex] : null;
+                      const clipDuration = activeSub ? (activeSub.end - activeSub.start) : 3;
+
                       return (
                         <video
                           key={idx}
@@ -697,9 +735,11 @@ export default function CreationDashboard() {
                           src={videoSrc}
                           preload="auto"
                           style={{
-                            opacity: idx === activeVideoIndex ? 1 : 0,
-                            pointerEvents: idx === activeVideoIndex ? 'auto' : 'none',
-                            transition: 'opacity 0.2s ease-in-out'
+                            opacity: isActive ? 1 : 0,
+                            pointerEvents: isActive ? 'auto' : 'none',
+                            animation: isActive
+                              ? `previewFadeIn 0.5s ease-out forwards, previewKenBurns ${clipDuration}s linear forwards, previewDummy-${activeSubIndex} 0s`
+                              : 'none',
                           }}
                           loop
                           playsInline
@@ -734,15 +774,102 @@ export default function CreationDashboard() {
                     />
                   )}
 
-                  <div className="absolute inset-x-3 bottom-24 flex items-center justify-center z-30 pointer-events-none">
-                    {currentSubtitle && (
-                      <p className={`video-subtitle font-sans font-black tracking-wide text-center max-w-[90%] transition-all duration-300 ${
-                        isZoomed ? 'text-base' : 'text-sm'
-                      }`}>
-                        {currentSubtitle}
-                      </p>
-                    )}
-                  </div>
+                  {(() => {
+                    const activeSubtitle = subtitles.find(
+                      (sub) => currentTime >= sub.start && currentTime <= sub.end
+                    );
+                    if (!activeSubtitle || !activeSubtitle.text.trim()) return null;
+
+                    const words = activeSubtitle.text.trim().split(/\s+/);
+                    const totalWords = words.length;
+                    const subtitleDuration = activeSubtitle.end - activeSubtitle.start;
+                    const elapsed = currentTime - activeSubtitle.start;
+
+                    const activeWordIndex = totalWords > 1 && subtitleDuration > 0
+                      ? Math.min(
+                          Math.floor((elapsed / subtitleDuration) * totalWords),
+                          totalWords - 1
+                        )
+                      : 0;
+
+                    return (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          display: 'flex',
+                          justifyContent: 'center',
+                          alignItems: 'flex-end',
+                          paddingBottom: `${phoneWidth * 0.370}px`,
+                          paddingLeft: `${phoneWidth * 0.074}px`,
+                          paddingRight: `${phoneWidth * 0.074}px`,
+                          pointerEvents: 'none',
+                          zIndex: 30,
+                        }}
+                      >
+                        <h1
+                          style={{
+                            fontFamily: '"Montserrat", "Poppins", "Arial Black", sans-serif',
+                            fontSize: `${phoneWidth * 0.0777}px`,
+                            fontWeight: 900,
+                            textTransform: 'uppercase',
+                            textAlign: 'center',
+                            lineHeight: 1.25,
+                            letterSpacing: '1.5px',
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            justifyContent: 'center',
+                            rowGap: `${phoneWidth * 0.0092}px`,
+                            textShadow: `
+                              -${Math.max(1, Math.round(phoneWidth * 0.0037))}px -${Math.max(1, Math.round(phoneWidth * 0.0037))}px 0 #000,
+                               ${Math.max(1, Math.round(phoneWidth * 0.0037))}px -${Math.max(1, Math.round(phoneWidth * 0.0037))}px 0 #000,
+                              -${Math.max(1, Math.round(phoneWidth * 0.0037))}px  ${Math.max(1, Math.round(phoneWidth * 0.0037))}px 0 #000,
+                               ${Math.max(1, Math.round(phoneWidth * 0.0037))}px  ${Math.max(1, Math.round(phoneWidth * 0.0037))}px 0 #000,
+                               0px ${Math.round(phoneWidth * 0.0055)}px ${Math.round(phoneWidth * 0.0138)}px rgba(0, 0, 0, 0.9)
+                            `,
+                          }}
+                        >
+                          {words.map((word: string, index: number) => {
+                            const isActive = index === activeWordIndex;
+                            
+                            const wordDuration = subtitleDuration / totalWords;
+                            const wordStart = activeSubtitle.start + index * wordDuration;
+                            const wordElapsed = currentTime - wordStart;
+                            const wordElapsedFrames = wordElapsed * 30; // 30fps mapping
+                            
+                            let scale = 1.0;
+                            if (isActive && wordElapsedFrames >= 0) {
+                              if (wordElapsedFrames < 3) {
+                                scale = 1.0 + (wordElapsedFrames / 3) * 0.25;
+                              } else if (wordElapsedFrames < 6) {
+                                scale = 1.25 - ((wordElapsedFrames - 3) / 3) * 0.15;
+                              } else {
+                                scale = 1.10;
+                              }
+                            }
+
+                            return (
+                              <span
+                                key={index}
+                                style={{
+                                  color: isActive ? '#FFD700' : '#FFFFFF',
+                                  marginRight: `${phoneWidth * 0.0185}px`,
+                                  display: 'inline-block',
+                                  transform: `scale(${scale})`,
+                                  transition: isActive ? 'none' : 'transform 0.15s ease-out',
+                                }}
+                              >
+                                {word}
+                              </span>
+                            );
+                          })}
+                        </h1>
+                      </div>
+                    );
+                  })()}
 
                   <div className="relative z-30 flex flex-col gap-2 p-3 bg-gradient-to-t from-black via-black/40 to-transparent">
                     <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden">

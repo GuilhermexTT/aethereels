@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCurrentFrame, useVideoConfig } from 'remotion';
+import { useCurrentFrame, useVideoConfig, interpolate } from 'remotion';
 import { SubtitleItem } from './types';
 
 interface SubtitleOverlayProps {
@@ -82,13 +82,33 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ subtitles }) =
       >
         {words.map((word, index) => {
           const isActive = index === activeWordIndex;
+
+          // Calcula a duração estimada de cada palavra e quando ela começa a ficar ativa
+          const wordDuration = subtitleDuration / totalWords;
+          const wordStart = activeSubtitle.start + index * wordDuration;
+          const wordElapsed = currentTime - wordStart;
+          const wordElapsedFrames = wordElapsed * fps;
+
+          // Efeito de "Pop" no tamanho da palavra ativa:
+          // Escala rapidamente de 1.0 para 1.25 nos primeiros 3 frames (0.1s),
+          // depois suaviza para 1.10 nos próximos 3 frames e permanece em 1.10
+          let scale = 1.0;
+          if (isActive && wordElapsedFrames >= 0) {
+            scale = interpolate(wordElapsedFrames, [0, 3, 6], [1.0, 1.25, 1.10], {
+              extrapolateLeft: 'clamp',
+              extrapolateRight: 'clamp',
+            });
+          }
+
           return (
             <span
               key={index}
               style={{
-                color: isActive ? '#FFD700' : '#FFFFFF', // Amarelo viva para a palavra ativa, branco para o resto
+                color: isActive ? '#FFD700' : '#FFFFFF', // Amarelo vivo para a palavra ativa, branco para o resto
                 marginRight: '20px',
                 display: 'inline-block',
+                transform: `scale(${scale})`,
+                transition: isActive ? 'none' : 'transform 0.15s ease-out',
               }}
             >
               {word}
