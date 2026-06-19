@@ -43,17 +43,17 @@ export async function POST(request: NextRequest) {
       if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
         console.log('🔧 [DEV MODE] Nenhuma sessão ativa detectada. Criando/usando usuário padrão de testes...');
         
-        // Verificar se existe algum usuário cadastrado na tabela de usuários públicos
-        const { data: existingUsers } = await supabaseAdmin
-          .from('users')
+        // Verificar se existe algum usuário cadastrado na tabela de perfis
+        const { data: existingProfiles } = await supabaseAdmin
+          .from('profiles')
           .select('id, email')
           .limit(1);
 
-        if (existingUsers && existingUsers.length > 0) {
-          user = { id: existingUsers[0].id, email: existingUsers[0].email };
-          console.log(`🔧 [DEV MODE] Usando usuário de testes existente: ${user.email} (${user.id})`);
+        if (existingProfiles && existingProfiles.length > 0) {
+          user = { id: existingProfiles[0].id, email: existingProfiles[0].email };
+          console.log(`🔧 [DEV MODE] Usando usuário de testes existente em profiles: ${user.email} (${user.id})`);
         } else {
-          // Se não houver, criamos um usuário padrão
+          // Se não houver, criamos um usuário padrão no Auth
           const testEmail = 'dev-reelsflow-user@example.com';
           const testPassword = 'PasswordDev123!';
           
@@ -74,23 +74,30 @@ export async function POST(request: NextRequest) {
           user = authUser.user;
           console.log(`🔧 [DEV MODE] Novo usuário de testes criado no Auth: ${testEmail} (${user.id})`);
 
-          // Inserir na tabela public.users com saldo inicial de créditos
-          const { error: insertUserError } = await supabaseAdmin
-            .from('users')
+          // Criar registro na tabela legada users por compatibilidade
+          await supabaseAdmin.from('users').insert({
+            id: user.id,
+            email: testEmail,
+            credits_balance: 1000
+          }).select('id');
+
+          // Inserir na tabela public.profiles com saldo inicial para testes locais
+          const { error: insertProfileError } = await supabaseAdmin
+            .from('profiles')
             .insert({
               id: user.id,
               email: testEmail,
-              credits_balance: 1000 // Saldo para testes locais
+              credits: 1000 // Saldo generoso para testes de desenvolvimento
             });
 
-          if (insertUserError) {
-            console.error('Erro ao inserir perfil do usuário de testes na tabela public.users:', insertUserError);
+          if (insertProfileError) {
+            console.error('Erro ao inserir perfil do usuário de testes na tabela public.profiles:', insertProfileError);
             return NextResponse.json(
               { error: 'Não autorizado. Falha ao inicializar créditos do usuário padrão de testes.' },
               { status: 401 }
             );
           }
-          console.log('🔧 [DEV MODE] Perfil criado na tabela public.users com 1000 créditos.');
+          console.log('🔧 [DEV MODE] Perfil criado na tabela public.profiles com 1000 créditos.');
         }
       } else {
         return NextResponse.json(
@@ -100,64 +107,81 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Garantir que existe um registro correspondente na tabela public.users para o usuário autenticado
-    const { data: existingProfile, error: profileError } = await supabaseAdmin
-      .from('users')
-      .select('id')
+    // 4. Garantir que o perfil do usuário existe na tabela public.profiles e obter saldo
+    let { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, credits')
       .eq('id', user.id)
       .maybeSingle();
 
     if (profileError) {
-      console.error('Erro ao verificar perfil do usuário em public.users:', profileError);
+      console.error('Erro ao buscar perfil do usuário em public.profiles:', profileError);
     }
 
-    if (!existingProfile) {
-      console.log(`🔧 [AUTH AUTO-SETUP] Perfil do usuário ${user.email} (${user.id}) não encontrado em public.users. Criando perfil com 1000 créditos...`);
-      const { error: insertError } = await supabaseAdmin
-        .from('users')
+    // Se o perfil não existir, criamos um automaticamente com o saldo padrão inicial (5 créditos)
+    if (!profile) {
+      console.log(`🔧 [AUTH AUTO-SETUP] Perfil do usuário ${user.email} (${user.id}) não encontrado em public.profiles. Criando com saldo inicial de 5 créditos...`);
+      
+      // Criar também na tabela legada users por retrocompatibilidade de FK
+      await supabaseAdmin.from('users').insert({
+        id: user.id,
+        email: user.email,
+        credits_balance: 5
+      }).select('id').maybeSingle();
+
+      const { data: newProfile, error: insertError } = await supabaseAdmin
+        .from('profiles')
         .insert({
           id: user.id,
           email: user.email,
-          credits_balance: 1000
-        });
+          credits: 5 // Saldo padrão inicial de testes conforme requisito
+        })
+        .select('id, credits')
+        .single();
 
       if (insertError) {
-        console.error('Erro ao inserir perfil do usuário em public.users:', insertError);
+        console.error('Erro ao inserir perfil do usuário em public.profiles:', insertError);
         return NextResponse.json(
-          { error: 'Falha ao inicializar o saldo de créditos do usuário.' },
+          { error: 'Falha ao inicializar o perfil e saldo de créditos do usuário.' },
           { status: 500 }
         );
       }
+      profile = newProfile;
     }
 
-    // 4. Invocar a RPC para debitar crédito de forma atômica (previne Race Conditions)
-    // Se for em modo de desenvolvimento sem sessão ativa, usamos supabaseAdmin para bypassar RLS da RPC
-    const supabaseClientToUse = (authError || !user || user.email === 'dev-reelsflow-user@example.com') 
-      ? supabaseAdmin 
-      : supabaseUser;
-
-    const { data: jobId, error: rpcError } = await supabaseClientToUse.rpc('debit_video_credit', {
-      p_user_id: user.id,
-      p_prompt_input: prompt_input.trim()
-    });
-
-
-    if (rpcError) {
-      // O Supabase retorna códigos de erro PostgreSQL em 'code'.
-      // Erro 22003 indica valor fora do intervalo (CHECK constraint de saldo insuficiente)
-      // Erro 42501 indica privilégio insuficiente (tentativa de roubo de ID, etc.)
-      const isInsufficientCredits = rpcError.code === '22003' || rpcError.message.includes('insuficiente');
-      
+    // 5. Trava de Segurança Server-Side: Verificar se o saldo de créditos é maior que 0
+    if (profile.credits <= 0) {
+      console.warn(`[TRAVA DE SEGURANÇA] Usuário ${user.email} (${user.id}) tentou gerar vídeo com saldo zerado (Saldo atual: ${profile.credits}).`);
       return NextResponse.json(
-        { error: isInsufficientCredits ? 'Saldo de créditos insuficiente.' : rpcError.message },
-        { status: isInsufficientCredits ? 400 : 500 }
+        { error: 'Saldo de créditos insuficiente. Faça um upgrade ou aguarde a recarga.' },
+        { status: 403 }
       );
     }
 
-    // 5. Preparar e enviar o payload para o n8n assinado via HMAC
+    // 6. Criar o registro na tabela de video_jobs com status 'pending' para obter o job_id
+    const { data: newJob, error: jobError } = await supabaseAdmin
+      .from('video_jobs')
+      .insert({
+        user_id: user.id,
+        status: 'pending',
+        prompt_input: prompt_input.trim(),
+        script_json: {}
+      })
+      .select('id')
+      .single();
+
+    if (jobError || !newJob) {
+      console.error('Erro ao registrar o job de vídeo no Supabase:', jobError);
+      return NextResponse.json(
+        { error: 'Falha ao iniciar o job de vídeo no banco de dados.' },
+        { status: 500 }
+      );
+    }
+
+    const jobId = newJob.id;
+
+    // 7. Preparar e enviar o payload para o n8n assinado via HMAC
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
-    
-    // Payload enviado para o n8n
     const webhookPayload = {
       job_id: jobId,
       prompt_input: prompt_input.trim(),
@@ -171,12 +195,14 @@ export async function POST(request: NextRequest) {
     try {
       signature = generateHmacSignature(payloadString);
     } catch (cryptoErr: any) {
-      // Se a chave não estiver configurada no servidor, reembolsamos o crédito imediatamente
-      await supabaseAdmin.rpc('refund_video_credit', {
-        p_user_id: user.id,
-        p_job_id: jobId,
-        p_error_txt: `Erro de criptografia interna: ${cryptoErr.message}`
-      });
+      console.error('Erro de criptografia interna na geração da assinatura HMAC:', cryptoErr);
+      
+      // Marcar o job como falhado se falhar na assinatura
+      await supabaseAdmin
+        .from('video_jobs')
+        .update({ status: 'failed' })
+        .eq('id', jobId);
+
       return NextResponse.json(
         { error: 'Configuração interna do servidor inválida (chave secreta de assinatura ausente).' },
         { status: 500 }
@@ -184,14 +210,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (!n8nWebhookUrl) {
-      // Se a URL do n8n não estiver configurada no backend, logamos e estornamos o crédito
       console.error('ERRO: N8N_WEBHOOK_URL não configurada nas variáveis de ambiente.');
       
-      await supabaseAdmin.rpc('refund_video_credit', {
-        p_user_id: user.id,
-        p_job_id: jobId,
-        p_error_txt: 'Webhook do n8n não configurado no servidor.'
-      });
+      // Atualizar o status do job para failed
+      await supabaseAdmin
+        .from('video_jobs')
+        .update({ status: 'failed' })
+        .eq('id', jobId);
 
       return NextResponse.json(
         { error: 'Falha ao processar o vídeo. Integração externa não configurada.' },
@@ -214,22 +239,35 @@ export async function POST(request: NextRequest) {
         throw new Error(`n8n retornou status ${response.status}`);
       }
     } catch (networkErr: any) {
-      // Se falhar o disparo para o n8n (Rede offline, DNS falhou, etc.), executamos a política de reembolso
-      console.error(`Falha ao disparar webhook para o n8n. Iniciando reembolso para o job ${jobId}. Erro: ${networkErr.message}`);
+      console.error(`Falha ao disparar webhook para o n8n. Marcando job ${jobId} como falhado. Erro: ${networkErr.message}`);
       
-      await supabaseAdmin.rpc('refund_video_credit', {
-        p_user_id: user.id,
-        p_job_id: jobId,
-        p_error_txt: `Falha na requisição de rede para o n8n: ${networkErr.message}`
-      });
+      // Se falhar o disparo para o n8n, marcamos o job como failed imediatamente
+      // (Não debitamos créditos neste caso, pois o fluxo foi interrompido antes de consumir recursos na AWS/ElevenLabs)
+      await supabaseAdmin
+        .from('video_jobs')
+        .update({ status: 'failed' })
+        .eq('id', jobId);
 
       return NextResponse.json(
-        { error: 'Erro de conexão com o motor de renderização. Seu crédito foi estornado.' },
+        { error: 'Erro de conexão com o motor de renderização. Nenhum crédito foi debitado.' },
         { status: 500 }
       );
     }
 
-    // 6. Retornar sucesso contendo o id do job criado
+    // 8. Fluxo de Disparo com Sucesso -> Decrementar exatamente 1 crédito via RPC atômica
+    const { error: decrementError } = await supabaseAdmin.rpc('decrement_profile_credits', {
+      p_user_id: user.id,
+      p_amount: 1
+    });
+
+    if (decrementError) {
+      console.error(`Erro ao debitar crédito do usuário ${user.id} para o job ${jobId}:`, decrementError);
+      // Mantemos o job em andamento, mas logamos o erro administrativo de créditos
+    } else {
+      console.log(`[DÉBITO BEM-SUCEDIDO] 1 crédito debitado do usuário ${user.id} pelo job ${jobId}.`);
+    }
+
+    // 9. Retornar sucesso contendo o id do job criado
     return NextResponse.json({
       job_id: jobId,
       status: 'pending'

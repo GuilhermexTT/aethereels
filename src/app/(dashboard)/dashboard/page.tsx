@@ -20,7 +20,16 @@ import {
   Loader2,
   CheckCircle2,
   Download,
-  X
+  X,
+  TrendingUp,
+  ShoppingBag,
+  GraduationCap,
+  Dumbbell,
+  Mic,
+  Heart,
+  MessageCircle,
+  Share2,
+  Upload
 } from 'lucide-react';
 import { useDashboard } from '../../../context/DashboardContext';
 import { TabType, LanguageType, ToneType, DurationType } from '../../../types/dashboard';
@@ -58,6 +67,54 @@ export default function CreationDashboard() {
   const [transitionStyle, setTransitionStyle] = useState<React.CSSProperties>({});
   const sidebarWrapperRef = useRef<HTMLDivElement>(null);
   const modalPlaceholderRef = useRef<HTMLDivElement>(null);
+
+  const [dragActive, setDragActive] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setSelectedFileName(e.dataTransfer.files[0].name);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFileName(e.target.files[0].name);
+    }
+  };
+
+  const handleTagClick = (tag: string) => {
+    const prompts: Record<string, string> = {
+      Marketing: "Crie um reels focado em marketing de atração e branding pessoal, com ganchos fortes para reter a atenção.",
+      Produto: "Gere um reels demonstrando os benefícios de um produto de tecnologia premium, destacando design e utilidade no dia a dia.",
+      Educação: "Escreva um roteiro educacional explicando um conceito complexo de inteligência artificial de forma super simples e visual.",
+      Fitness: "Gere um vídeo motivacional de alta energia sobre foco, consistência nos treinos e superação de limites físicos.",
+      Storytelling: "Crie uma narrativa inspiradora sobre superação na jornada empreendedora, focado em conexão emocional profunda."
+    };
+    if (prompts[tag]) {
+      setPrompt(prompts[tag]);
+    }
+  };
+
+  useEffect(() => {
+    if (videoState === 'idle') {
+      setVideoState('ready');
+    }
+  }, []);
 
   const handleZoomIn = () => {
     if (phoneContainerRef.current) {
@@ -583,57 +640,151 @@ export default function CreationDashboard() {
   };
 
   return (
-    <div className="grid grid-cols-12 gap-8 items-start">
-      <section className="col-span-12 lg:col-span-8 flex flex-col gap-8">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-display text-4xl font-extrabold text-white">Vamos criar seu próximo vídeo</h1>
+    <div className="grid grid-cols-12 gap-8 items-start max-w-7xl mx-auto">
+      {/* Coluna da Esquerda: Criador */}
+      <section className="col-span-12 lg:col-span-8 flex flex-col gap-4">
+        {/* Badge superior */}
+        <div className="flex">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0a1122]/80 border border-[#1e2d4a]/50 text-[10px] text-cyan-400 font-semibold select-none shadow-sm shadow-cyan-500/5">
+            <Sparkles className="h-3 w-3 text-cyan-400" />
+            <span>IA que entende sua ideia e cria vídeos incríveis</span>
+          </div>
         </div>
 
-        <div className="bg-[#0b1329]/20 backdrop-blur-md border border-[#1e293b]/40 rounded-2xl p-8 flex flex-col gap-8 relative">
-          <div className="grid grid-cols-3 rounded-xl bg-[#050b14] p-1 border border-[#1e293b]/30">
-            <button onClick={() => setActiveTab('text-to-video')} className={`py-3 text-sm font-semibold rounded-lg ${activeTab === 'text-to-video' ? 'bg-slate-900/50 text-cyan-400 border-b border-cyan-400' : 'text-slate-400'}`}>Texto para Vídeo</button>
-            <button disabled className="py-3 text-sm font-semibold text-slate-600 cursor-not-allowed">Link de Blog</button>
-            <button disabled className="py-3 text-sm font-semibold text-slate-600 cursor-not-allowed">Áudio Trend</button>
+        {/* Heading principal */}
+        <div className="flex flex-col">
+          <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-white leading-tight">
+            O que você quer transformar em <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-400">vídeo?</span>
+          </h1>
+        </div>
+
+        {/* Container Principal do Formulário */}
+        <div className="flex flex-col gap-4">
+          {/* Caixa de Texto do Prompt */}
+          <div className="relative rounded-2xl border border-blue-500/80 shadow-[0_0_20px_rgba(59,130,246,0.12)] bg-[#060a13] p-3.5 transition-all duration-300">
+            <textarea 
+              value={prompt} 
+              onChange={(e) => setPrompt(e.target.value)} 
+              placeholder="Descreva sua ideia aqui..." 
+              className="w-full min-h-[96px] bg-transparent text-slate-100 placeholder-slate-500 text-sm outline-none resize-none leading-relaxed" 
+            />
+            <div className="flex items-center justify-between border-t border-slate-900/40 pt-2.5 mt-1.5 select-none">
+              <span className="text-[11px] text-slate-500 font-semibold">{prompt.length}/4000</span>
+              <button 
+                onClick={handleGenerateVideo} 
+                disabled={videoState === 'loading' || !prompt.trim()} 
+                className="h-8 w-8 flex items-center justify-center rounded-full bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] text-white hover:opacity-95 active:scale-95 transition-all shadow-md shadow-indigo-600/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Enviar Prompt"
+              >
+                <Send className="h-3.5 w-3.5 rotate-270 text-white" />
+              </button>
+            </div>
           </div>
 
-          <div className="relative rounded-xl border border-[#1e293b]/40 bg-[#050b14] p-4">
-            <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Descreva sua ideia para o Reels..." className="w-full min-h-[160px] bg-transparent text-slate-100 text-sm outline-none resize-none" />
-            <div className="flex items-center justify-between border-t border-[#1e293b]/20 pt-3 mt-2">
-              <span className="text-[11px] text-slate-500">{prompt.length}/4000</span>
-              <button onClick={handleGenerateAI} className="px-3 py-1.5 text-xs font-semibold bg-cyan-500/5 border border-cyan-500/20 text-cyan-400 rounded-lg hover:bg-cyan-500/10">Gerar com IA</button>
+          {/* Separador OU */}
+          <div className="flex items-center gap-4 py-0.5 select-none">
+            <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-slate-800/60 to-transparent" />
+            <span className="text-[10px] text-slate-500 font-extrabold tracking-widest uppercase">OU</span>
+            <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-slate-800/60 to-transparent" />
+          </div>
+
+          {/* Área de Drag & Drop para Upload de Arquivos */}
+          <div 
+            onClick={() => fileInputRef.current?.click()}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            className={`border-2 border-dashed rounded-2xl p-4.5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+              dragActive 
+                ? 'border-blue-500/80 bg-blue-500/5 shadow-[0_0_20px_rgba(59,130,246,0.12)]' 
+                : 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.06)] bg-[#060a13]/30 hover:bg-[#060a13]/55 hover:border-blue-500/80 hover:shadow-[0_0_20px_rgba(59,130,246,0.12)]'
+            }`}
+          >
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              className="hidden" 
+              multiple 
+              onChange={handleFileChange}
+            />
+            {selectedFileName ? (
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                  <CheckCircle2 className="h-4.5 w-4.5" />
+                </div>
+                <span className="text-xs font-semibold text-slate-200">Arquivo Selecionado</span>
+                <span className="text-[11px] text-slate-400 max-w-[280px] truncate">{selectedFileName}</span>
+              </div>
+            ) : (
+              <>
+                <div className="h-9 w-9 rounded-full bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
+                  <Upload className="h-4.5 w-4.5" />
+                </div>
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-slate-300">Arraste e solte suas fotos ou vídeos aqui</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">ou clique para selecionar arquivos</p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Seção de Ideias Populares */}
+          <div className="flex flex-col gap-1.5 select-none">
+            <span className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wider">Ideias populares</span>
+            <div className="flex items-center gap-2 w-full overflow-x-auto pb-1 scrollbar-none">
+              {[
+                { label: 'Marketing', icon: TrendingUp },
+                { label: 'Produto', icon: ShoppingBag },
+                { label: 'Educação', icon: GraduationCap },
+                { label: 'Fitness', icon: Dumbbell },
+                { label: 'Storytelling', icon: Mic }
+              ].map((tag) => {
+                const Icon = tag.icon;
+                return (
+                  <button
+                    key={tag.label}
+                    onClick={() => handleTagClick(tag.label)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-[#060a13] border border-[#15233c]/60 hover:border-blue-500/40 rounded-full text-xs font-semibold text-slate-300 transition-all hover:text-white hover:bg-slate-900/30 whitespace-nowrap"
+                  >
+                    <Icon className="h-3.5 w-3.5 text-slate-400 group-hover:text-white" />
+                    <span>{tag.label}</span>
+                  </button>
+                );
+              })}
+              <button className="h-7.5 w-7.5 shrink-0 flex items-center justify-center rounded-full border border-[#15233c]/60 bg-[#060a13] text-slate-400 hover:text-white transition-all hover:border-blue-500/40">
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-white/5 pt-6">
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-slate-400">Idioma</span>
-              <select value={language} onChange={(e) => setLanguage(e.target.value as LanguageType)} className="w-full bg-[#050b14] border border-[#1e293b]/40 rounded-xl px-4 py-3 text-sm text-slate-200 outline-none"><option value="pt">Português</option><option value="en">Inglês</option></select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-slate-400">Tom de voz</span>
-              <select value={tone} onChange={(e) => setTone(e.target.value as ToneType)} className="w-full bg-[#050b14] border border-[#1e293b]/40 rounded-xl px-4 py-3 text-sm text-slate-200 outline-none"><option value="envolvente">Envolvente</option><option value="profissional">Profissional</option></select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-slate-400">Duração</span>
-              <select value={duration} onChange={(e) => setDuration(e.target.value as DurationType)} className="w-full bg-[#050b14] border border-[#1e293b]/40 rounded-xl px-4 py-3 text-sm text-slate-200 outline-none"><option value="30s">30s</option><option value="60s">60s</option></select>
-            </div>
-          </div>
-
-          <div className="border-t border-white/5 pt-6">
-            <button onClick={handleGenerateVideo} disabled={videoState === 'loading'} className="w-full bg-gradient-to-r from-blue-600 to-cyan-400 py-4 rounded-xl font-bold text-white transition-all disabled:opacity-50">
-              {videoState === 'loading' ? `Compilando... (${loadingProgress}%)` : 'Gerar Vídeo (1 crédito)'}
+          {/* Botão de Geração */}
+          <div className="flex flex-col gap-2 mt-0.5 select-none">
+            <button 
+              onClick={handleGenerateVideo} 
+              disabled={videoState === 'loading' || (activeTab === 'text-to-video' && !prompt.trim())} 
+              className="w-full bg-gradient-to-r from-blue-600 to-[#7c3aed] hover:from-blue-700 hover:to-[#6d28d9] py-3.5 rounded-2xl font-bold text-white transition-all duration-200 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center gap-0.5 shadow-lg shadow-indigo-600/10"
+            >
+              <span className="text-sm tracking-wide">
+                {videoState === 'loading' ? `Compilando... (${loadingProgress}%)` : '✨ Gerar vídeo'}
+              </span>
+              <span className="text-[10px] text-white/70 font-semibold normal-case">1 crédito será consumido</span>
             </button>
+            <div className="flex items-center justify-center gap-1 text-[10px] text-amber-500/90 font-bold">
+              <span>⚡</span>
+              <span>Geração em ~2 minutos</span>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="col-span-12 lg:col-span-4 flex flex-col gap-6 relative">
-        <h2 className="text-lg font-bold text-white">Preview 9:16</h2>
-        <div className={`bg-[#0b1329]/20 border border-[#1e293b]/40 rounded-3xl p-6 flex flex-col items-center gap-6 ${isZoomed ? '' : 'backdrop-blur-md'}`}>
+      {/* Coluna da Direita: Preview */}
+      <section className="col-span-12 lg:col-span-4 flex flex-col gap-5 relative">
+        <div className={`bg-[#060a13]/40 border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.08)] rounded-3xl p-6 flex flex-col items-center gap-5 ${isZoomed ? '' : 'backdrop-blur-md'}`}>
           {/* Sidebar wrapper that acts as the layout anchor and visual placeholder */}
           <div 
             ref={sidebarWrapperRef} 
-            className="relative w-[250px] aspect-[9/16] flex items-center justify-center"
+            className="relative w-full max-w-[255px] aspect-[9/16] flex items-center justify-center"
           >
             {/* Visual dashed outline shown only when the phone has zoomed away */}
             {zoomState !== 'idle' && (
@@ -642,7 +793,7 @@ export default function CreationDashboard() {
               </div>
             )}
 
-            {/* The actual phone mockup */}
+            {/* Mockup do Celular */}
             <div 
               ref={phoneContainerRef} 
               className={`aspect-[9/16] rounded-[2.5rem] border-[8px] border-slate-950 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col justify-end ${
@@ -658,7 +809,7 @@ export default function CreationDashboard() {
               </div>
 
               {/* Status Bar */}
-              <div className="absolute top-1 inset-x-0 h-6 px-6 flex items-center justify-between text-[8px] font-semibold text-white/95 z-40 pointer-events-none select-none">
+              <div className="absolute top-1.5 inset-x-0 h-6 px-6 flex items-center justify-between text-[8px] font-semibold text-white/95 z-40 pointer-events-none select-none">
                 <span>{phoneTime}</span>
                 <div className="flex items-center gap-1.5">
                   {/* Signal strength bar */}
@@ -679,22 +830,26 @@ export default function CreationDashboard() {
               {/* Bottom Home Indicator Pill */}
               <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-20 h-1 bg-white/40 rounded-full z-40 pointer-events-none" />
               
-              {videoState === 'idle' && <div className="text-center p-4 text-xs text-slate-400">Seu vídeo aparecerá aqui após a renderização.</div>}
+              {videoState === 'idle' && (
+                <div className="text-center p-6 text-xs text-slate-500 leading-relaxed font-semibold">
+                  Carregando visualizador de vídeo...
+                </div>
+              )}
               
               {videoState === 'loading' && (
-                <div className="w-full h-full flex flex-col justify-center items-center gap-2 p-4 text-center">
-                  <Loader2 className="h-8 w-8 text-cyan-400 animate-spin" />
-                  <span className="text-xs text-slate-200">{loadingLog}</span>
+                <div className="w-full h-full flex flex-col justify-center items-center gap-2.5 p-4 text-center select-none bg-black">
+                  <Loader2 className="h-7 w-7 text-cyan-400 animate-spin" />
+                  <span className="text-xs text-slate-200 font-semibold animate-pulse">{loadingLog}</span>
                 </div>
               )}
 
               {isRendering && (
-                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center gap-3 p-4 text-center">
-                  <Loader2 className="h-8 w-8 text-cyan-400 animate-spin" />
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center gap-3 p-4 text-center select-none">
+                  <Loader2 className="h-7 w-7 text-cyan-400 animate-spin" />
                   <span className="text-xs font-semibold text-slate-200 leading-normal animate-pulse">
-                    Renderizando seu vídeo em alta definição... {renderProgress > 0 ? `(${renderProgress}%)` : ''}
+                    Renderizando em HD... {renderProgress > 0 ? `(${renderProgress}%)` : ''}
                   </span>
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-slate-500">
                     Isso pode levar até 2 minutos
                   </span>
                 </div>
@@ -751,7 +906,7 @@ export default function CreationDashboard() {
                   ) : (
                     <video
                       ref={videoRef}
-                      src={videoUrl || "https://media.w3.org/2010/05/sintel/trailer_hd.mp4"}
+                      src={videoUrl || "https://assets.mixkit.co/videos/preview/mixkit-futuristic-subway-station-with-neon-lights-in-vertical-format-48227-large.mp4"}
                       onTimeUpdate={handleTimeUpdate}
                       onLoadedMetadata={handleVideoLoadedMetadata}
                       onClick={togglePlay}
@@ -774,6 +929,7 @@ export default function CreationDashboard() {
                     />
                   )}
 
+                  {/* Legendas estilizadas com palavra-ativa dinâmica */}
                   {(() => {
                     const activeSubtitle = subtitles.find(
                       (sub) => currentTime >= sub.start && currentTime <= sub.end
@@ -871,65 +1027,114 @@ export default function CreationDashboard() {
                     );
                   })()}
 
-                  <div className="relative z-30 flex flex-col gap-2 p-3 bg-gradient-to-t from-black via-black/40 to-transparent">
-                    <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden">
-                      <div className="h-full bg-cyan-400" style={{ width: `${totalDuration ? (currentTime / totalDuration) * 100 : 0}%` }} />
+                  {/* Barra de Progresso do Player na Borda Inferior */}
+                  <div className="absolute bottom-0 inset-x-0 h-1 bg-white/15 z-30 select-none">
+                    <div 
+                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500" 
+                      style={{ width: `${totalDuration ? (currentTime / totalDuration) * 100 : 0}%` }}
+                    />
+                  </div>
+
+                  {/* Controles Redondos Estilizados no Player */}
+                  <div className="absolute bottom-4 inset-x-4 flex items-center justify-between z-30 select-none pointer-events-auto">
+                    <button 
+                      onClick={togglePlay}
+                      className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95"
+                    >
+                      {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 fill-current ml-0.5" />}
+                    </button>
+
+                    <button 
+                      onClick={toggleMute}
+                      className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95"
+                    >
+                      {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+
+                  {/* Overlay dos Ícones do TikTok/Reels na Lateral */}
+                  <div className="absolute right-3.5 bottom-20 flex flex-col items-center gap-4 z-30 select-none">
+                    <div className="flex flex-col items-center gap-0.5 cursor-pointer group/icon">
+                      <div className="h-8.5 w-8.5 rounded-full bg-black/35 hover:bg-black/55 backdrop-blur-md flex items-center justify-center text-white border border-white/5 transition-all group-hover/icon:scale-110">
+                        <Heart className="h-3.5 w-3.5" />
+                      </div>
+                      <span className="text-[9px] text-white/90 font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">12.8K</span>
                     </div>
-                    <div className="flex items-center justify-between text-white text-[10px]">
-                      <div className="flex items-center gap-2">
-                        <button onClick={togglePlay}>{isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}</button>
-                        <span>{Math.floor(currentTime)}s / {Math.floor(totalDuration)}s</span>
+
+                    <div className="flex flex-col items-center gap-0.5 cursor-pointer group/icon">
+                      <div className="h-8.5 w-8.5 rounded-full bg-black/35 hover:bg-black/55 backdrop-blur-md flex items-center justify-center text-white border border-white/5 transition-all group-hover/icon:scale-110">
+                        <MessageCircle className="h-3.5 w-3.5" />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={toggleMute}>{isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}</button>
-                        <button onClick={isZoomed ? handleZoomOut : handleZoomIn} className="hover:text-cyan-400 transition-colors">
-                          <Maximize2 className="h-3 w-3" />
-                        </button>
+                      <span className="text-[9px] text-white/90 font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">352</span>
+                    </div>
+
+                    <div className="flex flex-col items-center gap-0.5 cursor-pointer group/icon">
+                      <div className="h-8.5 w-8.5 rounded-full bg-black/35 hover:bg-black/55 backdrop-blur-md flex items-center justify-center text-white border border-white/5 transition-all group-hover/icon:scale-110">
+                        <Share2 className="h-3.5 w-3.5" />
                       </div>
+                      <span className="text-[9px] text-white/90 font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">2.1K</span>
                     </div>
                   </div>
 
-                  <div className="absolute top-7 left-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full px-2 py-0.5 text-[8px] font-bold z-30">PRONTO</div>
+                  {/* Badge de Status/Exemplo no Topo */}
+                  <div className="absolute top-7 left-3.5 select-none z-30">
+                    <div className="bg-[#0a1122]/90 border border-slate-700/50 backdrop-blur-md text-[9px] text-yellow-400 font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                      <span>✨</span>
+                      <span>
+                        {videoUrl && videoUrl !== "https://assets.mixkit.co/videos/preview/mixkit-futuristic-subway-station-with-neon-lights-in-vertical-format-48227-large.mp4" 
+                          ? "PRONTO" 
+                          : "Exemplo real gerado com IA"
+                        }
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
+          {/* Informações Extras de Vídeo abaixo do Celular */}
+          <div className="text-center select-none font-semibold text-slate-400 text-xs flex items-center gap-1.5 justify-center">
+            <span>📱</span>
+            <span>Video completo em 15s • Formato Reels 9:16</span>
+          </div>
+
+          {/* Botões de Ação do Player */}
           {videoState === 'ready' && !isZoomed && (
-            <div className="flex gap-3 w-full justify-center z-20 max-w-[250px]">
-                <button
-                  onClick={handleZoomIn}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold bg-[#1e293b]/50 border border-[#1e293b]/60 text-slate-200 rounded-xl hover:bg-[#1e293b] hover:text-white transition-all cursor-pointer pointer-events-auto shadow-sm"
-                >
-                  <Maximize2 className="h-3.5 w-3.5" />
-                  Aumentar
-                </button>
-                <button
-                  onClick={() => {
-                    if (videoUrl && videoUrl.includes('amazonaws.com')) {
-                      window.open(videoUrl, '_blank');
-                    } else {
-                      handleDownload();
-                    }
-                  }}
-                  disabled={isDownloading || isRendering}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl hover:opacity-90 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto shadow-sm"
-                >
-                  {isDownloading || isRendering ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Download className="h-3.5 w-3.5" />
-                  )}
-                  {isRendering ? `Criando... (${renderProgress}%)` : 'Baixar MP4'}
-                </button>
-              </div>
-            )}
+            <div className="flex gap-3 w-full justify-center z-20 max-w-[255px] mt-1 select-none">
+              <button
+                onClick={handleZoomIn}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-[11px] font-bold bg-[#15233c]/35 border border-[#15233c]/60 text-slate-200 rounded-xl hover:bg-[#1e293b] hover:text-white transition-all cursor-pointer shadow-sm shadow-black/20"
+              >
+                <Maximize2 className="h-3.5 w-3.5 text-slate-400" />
+                Aumentar
+              </button>
+              <button
+                onClick={() => {
+                  if (videoUrl && videoUrl.includes('amazonaws.com')) {
+                    window.open(videoUrl, '_blank');
+                  } else {
+                    handleDownload();
+                  }
+                }}
+                disabled={isDownloading || isRendering}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-[11px] font-bold bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl hover:opacity-95 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-blue-500/5"
+              >
+                {isDownloading || isRendering ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+                {isRendering ? `Criando... (${renderProgress}%)` : 'Baixar MP4'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Modal Backdrop overlay */}
         {isZoomed && (
           <div 
-            className={`fixed inset-0 z-40 bg-[#050b14]/85 pointer-events-auto cursor-pointer ${
+            className={`fixed inset-0 z-40 bg-[#02050c]/90 pointer-events-auto cursor-pointer ${
               zoomState === 'zooming-out' ? 'animate-backdrop-out' : 'animate-backdrop-in'
             }`}
             onClick={handleZoomOut}
@@ -939,7 +1144,7 @@ export default function CreationDashboard() {
         {/* Modal Card Centered container */}
         {isZoomed && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-            <div className={`bg-[#0b1329] border border-[#1e293b]/60 rounded-3xl p-8 flex flex-col items-center max-w-[480px] w-full relative shadow-2xl pointer-events-auto ${
+            <div className={`bg-[#060a13] border border-[#15233c]/60 rounded-3xl p-8 flex flex-col items-center max-w-[480px] w-full relative shadow-2xl pointer-events-auto ${
               zoomState === 'zooming-out' ? 'animate-card-out' : 'animate-card-in'
             }`}>
               {/* Close button */}
@@ -974,7 +1179,7 @@ export default function CreationDashboard() {
                       }
                     }}
                     disabled={isDownloading || isRendering}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-4 py-3 text-xs font-semibold bg-[#0e1629] border border-slate-700/50 hover:bg-[#1e293b] text-white rounded-xl active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-4 py-3 text-xs font-semibold bg-[#0c1426] border border-[#15233c]/60 hover:bg-[#15233c] text-white rounded-xl active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                   >
                     {isDownloading || isRendering ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />

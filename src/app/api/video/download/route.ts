@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
         console.log('🔧 [DEV MODE] Nenhuma sessão ativa detectada na renderização. Tentando buscar usuário padrão...');
         const { data: existingUsers } = await supabaseAdmin
-          .from('users')
+          .from('profiles')
           .select('id, email')
           .limit(1);
 
