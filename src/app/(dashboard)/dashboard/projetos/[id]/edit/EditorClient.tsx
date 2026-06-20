@@ -2,8 +2,18 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Player } from '@remotion/player';
+import dynamic from 'next/dynamic';
 import { createClient } from '@supabase/supabase-js';
+
+const PlayerWrapper = dynamic(() => import('./PlayerWrapper'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex flex-col justify-center items-center gap-2 select-none">
+      <Loader2 className="h-6 w-6 text-blue-500 animate-spin" />
+      <span className="text-[10px] text-slate-500 font-bold">Carregando Player...</span>
+    </div>
+  )
+});
 import { 
   Play, 
   Pause, 
@@ -136,7 +146,23 @@ export default function EditorClient({ id }: EditorClientProps) {
             }
             
             setVideoUrls(normalizedVideos);
-            setSubtitles(parsedSubs);
+            
+            let currentStart = 0;
+            const mappedSubs = parsedSubs.map((sub: any) => {
+              const start = sub.start !== undefined 
+                ? parseFloat(sub.start) 
+                : (sub.start_time !== undefined ? parseFloat(sub.start_time) : currentStart);
+              const end = sub.end !== undefined 
+                ? parseFloat(sub.end) 
+                : (sub.end_time !== undefined ? parseFloat(sub.end_time) : (start + (parseFloat(sub.duration) || 3)));
+              currentStart = end;
+              return {
+                start,
+                end,
+                text: sub.text || sub.word || ''
+              };
+            });
+            setSubtitles(mappedSubs);
           }
         } else {
           alert('Projeto ou rascunho não localizado.');
@@ -534,25 +560,11 @@ export default function EditorClient({ id }: EditorClientProps) {
         
         {/* Componente do Player Remotion */}
         <div className="w-full bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.08)] rounded-3xl p-3 flex flex-col items-center justify-center aspect-[9/16] relative overflow-hidden select-none">
-          <Player
-            component={MainComposition}
-            inputProps={{
-              audio_url: audioUrl,
-              video_urls: videoUrls,
-              subtitles: subtitles
-            }}
+          <PlayerWrapper
+            audioUrl={audioUrl}
+            videoUrls={videoUrls}
+            subtitles={subtitles}
             durationInFrames={durationInFrames}
-            fps={30}
-            compositionWidth={1080}
-            compositionHeight={1920}
-            style={{
-              width: '100%',
-              height: '100%',
-              borderRadius: '1.25rem',
-              overflow: 'hidden',
-              backgroundColor: '#000',
-            }}
-            controls
           />
 
           {isRendering && (
