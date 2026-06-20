@@ -55,3 +55,38 @@ export async function getSupabaseUserClientFromRequest() {
   
   return getSupabaseUserClient(token ? `Bearer ${token}` : undefined);
 }
+
+/**
+ * Extrai e retorna o JWT token do usuário a partir dos headers ou cookies.
+ */
+export async function getSupabaseUserTokenFromRequest(): Promise<string | undefined> {
+  const headersList = await headers();
+  const authHeader = headersList.get('Authorization') || headersList.get('authorization');
+  
+  if (authHeader) {
+    if (authHeader.startsWith('Bearer ')) {
+      return authHeader.substring(7);
+    }
+    return authHeader;
+  }
+  
+  const cookieStore = await cookies();
+  const authCookie = cookieStore.getAll().find(
+    c => c.name.includes('auth-token') || c.name === 'sb-access-token'
+  );
+  
+  if (authCookie) {
+    try {
+      const val = authCookie.value;
+      if (val.startsWith('[')) {
+        const parsed = JSON.parse(val);
+        return parsed[0]; // access_token
+      }
+      return val;
+    } catch {
+      return authCookie.value;
+    }
+  }
+  
+  return undefined;
+}

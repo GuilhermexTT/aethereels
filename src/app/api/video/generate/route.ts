@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseUserClientFromRequest, supabaseAdmin } from '@/lib/supabase';
+import { getSupabaseUserClientFromRequest, supabaseAdmin, getSupabaseUserTokenFromRequest } from '@/lib/supabase';
 import { generateHmacSignature } from '@/lib/crypto';
 
 export async function POST(request: NextRequest) {
@@ -26,12 +26,13 @@ export async function POST(request: NextRequest) {
 
     // 2. Obter o cliente Supabase associado ao usuário (respeita RLS)
     const supabaseUser = await getSupabaseUserClientFromRequest();
+    const token = await getSupabaseUserTokenFromRequest();
 
     // 3. Obter dados do usuário autenticado a partir da sessão
     let user: any = null;
     let authError: any = null;
     try {
-      const { data: { user: supabaseAuthUser }, error: err } = await supabaseUser.auth.getUser();
+      const { data: { user: supabaseAuthUser }, error: err } = await supabaseUser.auth.getUser(token);
       user = supabaseAuthUser;
       authError = err;
     } catch (err) {
