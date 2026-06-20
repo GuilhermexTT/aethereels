@@ -27,10 +27,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Os campos job_id e status são obrigatórios.' }, { status: 400 });
     }
 
-    const validStatuses = ['scripting', 'rendering', 'ready', 'failed'];
+    const validStatuses = ['scripting', 'rendering', 'ready', 'failed', 'draft', 'processing'];
     if (!validStatuses.includes(status)) {
       return NextResponse.json({ error: `Status inválido: ${status}` }, { status: 400 });
     }
+
 
     const { data: jobData, error: fetchError } = await supabaseAdmin
       .from('video_jobs')
