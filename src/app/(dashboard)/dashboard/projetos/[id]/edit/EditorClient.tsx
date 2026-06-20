@@ -51,6 +51,8 @@ export default function EditorClient({ id }: EditorClientProps) {
   const [renderProgress, setRenderProgress] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
   const [credits, setCredits] = useState(0);
+  const [draftDbId, setDraftDbId] = useState<string | null>(null);
+
 
   // Painel de Mídias (Canva Interno)
   const [mediaPanelOpen, setMediaPanelOpen] = useState(false);
@@ -95,11 +97,12 @@ export default function EditorClient({ id }: EditorClientProps) {
         const { data: draft, error: draftErr } = await supabase
           .from('video_drafts')
           .select('*')
-          .eq('id', id)
-          .single();
+          .or(`id.eq.${id},video_job_id.eq.${id}`)
+          .maybeSingle();
 
         if (!draftErr && draft) {
           draftData = draft;
+          setDraftDbId(draft.id);
         } else {
           // Fallback para video_jobs
           const { data: job, error: jobErr } = await supabase
@@ -111,6 +114,7 @@ export default function EditorClient({ id }: EditorClientProps) {
             draftData = job;
           }
         }
+
 
         if (draftData) {
           setPromptInput(draftData.prompt_input || 'Rascunho Inteligente');
@@ -298,7 +302,7 @@ export default function EditorClient({ id }: EditorClientProps) {
       let { error: draftErr } = await supabase
         .from('video_drafts')
         .update({ script_json: updatedScriptJson })
-        .eq('id', id);
+        .eq('id', draftDbId || id);
 
       // Fallback para video_jobs
       if (draftErr) {
@@ -357,7 +361,7 @@ export default function EditorClient({ id }: EditorClientProps) {
       await supabase
         .from('video_drafts')
         .update({ status: 'rendering' })
-        .eq('id', id);
+        .eq('id', draftDbId || id);
       
       await supabase
         .from('video_jobs')
