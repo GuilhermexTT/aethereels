@@ -4,6 +4,7 @@ export interface SubtitleItem {
   end: number;   // em segundos
   start_time?: number;
   duration?: number;
+  word?: string;
 }
 
 export interface RemotionVideoProps {

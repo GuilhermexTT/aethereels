@@ -13,17 +13,21 @@ const SceneItem: React.FC<{
 }> = ({ src, durationInFrames }) => {
   const frame = useCurrentFrame();
 
+  const safeDuration = isNaN(durationInFrames) || durationInFrames <= 0 ? 30 : durationInFrames;
+
   // Fade-in suave de 15 frames (0.5s a 30fps) no início de cada cena
-  const opacity = interpolate(frame, [0, 15], [0, 1], {
+  const opacity = !isNaN(frame) ? interpolate(frame, [0, Math.min(15, safeDuration)], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
-  });
+  }) : 1;
 
   // Efeito Ken Burns: Zoom-in sutil e contínuo de 1.0 a 1.12 ao longo de toda a duração da cena
-  const scale = interpolate(frame, [0, durationInFrames], [1.0, 1.12], {
+  const scale = !isNaN(frame) ? interpolate(frame, [0, safeDuration], [1.0, 1.12], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
-  });
+  }) : 1;
+
+  if (!src) return null;
 
   const isImage = /\.(jpg|jpeg|png|webp|gif)($|\?)/i.test(src);
 
@@ -49,14 +53,21 @@ const SceneItem: React.FC<{
 };
 
 export const VideoSequence: React.FC<VideoSequenceProps> = ({ video_urls, subtitles }) => {
-  if (video_urls.length === 0) return null;
+  // Filter out invalid video urls or placeholders
+  const validUrls = (video_urls || []).filter(url => typeof url === 'string' && url.trim().length > 0);
+  
+  if (validUrls.length === 0) return null;
 
   return (
     <>
       {subtitles.map((sub, i) => {
         const startFrame = Math.round(sub.start * 30);
         const durationInFrames = Math.max(1, Math.round((sub.end - sub.start) * 30));
-        const videoSrc = video_urls[i % video_urls.length];
+        const videoSrc = validUrls[i % validUrls.length];
+
+        if (isNaN(startFrame) || isNaN(durationInFrames) || !videoSrc) {
+          return null;
+        }
 
         return (
           <Sequence

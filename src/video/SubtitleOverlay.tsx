@@ -93,7 +93,7 @@ export const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ subtitles }) =
           // Escala rapidamente de 1.0 para 1.25 nos primeiros 3 frames (0.1s),
           // depois suaviza para 1.10 nos próximos 3 frames e permanece em 1.10
           let scale = 1.0;
-          if (isActive && wordElapsedFrames >= 0) {
+          if (isActive && wordElapsedFrames >= 0 && !isNaN(wordElapsedFrames) && isFinite(wordElapsedFrames)) {
             scale = interpolate(wordElapsedFrames, [0, 3, 6], [1.0, 1.25, 1.10], {
               extrapolateLeft: 'clamp',
               extrapolateRight: 'clamp',

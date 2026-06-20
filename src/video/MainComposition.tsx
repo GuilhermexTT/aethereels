@@ -10,15 +10,24 @@ export const MainComposition: React.FC = () => {
 
   // Normalização das legendas para garantir que todas possuam start e end definidos
   const normalizedSubtitles = (subtitles || []).map((sub, index) => {
-    const start = sub.start !== undefined 
+    let start = sub.start !== undefined 
       ? Number(sub.start) 
       : (sub.start_time !== undefined ? Number(sub.start_time) : index * 3);
-    const end = sub.end !== undefined 
+
+    if (isNaN(start) || !isFinite(start)) {
+      start = index * 3;
+    }
+
+    let end = sub.end !== undefined 
       ? Number(sub.end) 
       : (sub.duration !== undefined ? start + Number(sub.duration) : start + 3);
 
+    if (isNaN(end) || !isFinite(end) || end <= start) {
+      end = start + 3;
+    }
+
     return {
-      text: sub.text || '',
+      text: String(sub.text || sub.word || ''),
       start,
       end
     };

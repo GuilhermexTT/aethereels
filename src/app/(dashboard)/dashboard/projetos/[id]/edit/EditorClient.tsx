@@ -33,7 +33,6 @@ import {
   VolumeX,
   Plus
 } from 'lucide-react';
-import { MainComposition } from '@/video/MainComposition';
 import { SubtitleItem } from '@/video/types';
 
 // Supabase client instance using standard client persistence
@@ -47,6 +46,11 @@ interface EditorClientProps {
 
 export default function EditorClient({ id }: EditorClientProps) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Estados dos Metadados do Rascunho
   const [promptInput, setPromptInput] = useState('');
@@ -136,8 +140,8 @@ export default function EditorClient({ id }: EditorClientProps) {
 
           if (scriptJson) {
             setAudioUrl(scriptJson.audio_url || '');
-            const parsedVideos = scriptJson.video_urls || [];
-            const parsedSubs = scriptJson.subtitles || [];
+            const parsedVideos = Array.isArray(scriptJson.video_urls) ? scriptJson.video_urls : [];
+            const parsedSubs = Array.isArray(scriptJson.subtitles) ? scriptJson.subtitles : [];
             
             // Garante correspondência 1-para-1 de mídias para as cenas
             const normalizedVideos = [...parsedVideos];
@@ -155,11 +159,15 @@ export default function EditorClient({ id }: EditorClientProps) {
               const end = sub.end !== undefined 
                 ? parseFloat(sub.end) 
                 : (sub.end_time !== undefined ? parseFloat(sub.end_time) : (start + (parseFloat(sub.duration) || 3)));
-              currentStart = end;
+              
+              const safeStart = isNaN(start) || !isFinite(start) ? currentStart : start;
+              const safeEnd = isNaN(end) || !isFinite(end) || end <= safeStart ? safeStart + 3 : end;
+              
+              currentStart = safeEnd;
               return {
-                start,
-                end,
-                text: sub.text || sub.word || ''
+                start: safeStart,
+                end: safeEnd,
+                text: String(sub.text || sub.word || '')
               };
             });
             setSubtitles(mappedSubs);
@@ -443,10 +451,11 @@ export default function EditorClient({ id }: EditorClientProps) {
   };
 
   // Cálculo dinâmico da duração total do vídeo
-  const totalSec = subtitles.length > 0 ? subtitles[subtitles.length - 1].end : 15;
+  const lastSub = subtitles.length > 0 ? subtitles[subtitles.length - 1] : null;
+  const totalSec = lastSub && typeof lastSub.end === 'number' && !isNaN(lastSub.end) ? lastSub.end : 15;
   const durationInFrames = Math.max(30, Math.ceil(totalSec * 30));
 
-  if (isLoading) {
+  if (!mounted || isLoading) {
     return (
       <div className="w-full h-[60vh] flex flex-col justify-center items-center gap-4">
         <Loader2 className="h-9 w-9 text-blue-500 animate-spin" />
@@ -544,8 +553,8 @@ export default function EditorClient({ id }: EditorClientProps) {
                   </div>
 
                   <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold select-none border-t border-slate-900/60 pt-2.5">
-                    <span>⏱️ Duração: {(scene.end - scene.start).toFixed(1)}s</span>
-                    <span>Intervalo: {scene.start.toFixed(1)}s - {scene.end.toFixed(1)}s</span>
+                    <span>⏱️ Duração: {scene && typeof scene.end === 'number' && typeof scene.start === 'number' && !isNaN(scene.end - scene.start) ? (scene.end - scene.start).toFixed(1) : '0.0'}s</span>
+                    <span>Intervalo: {scene && typeof scene.start === 'number' && !isNaN(scene.start) ? scene.start.toFixed(1) : '0.0'}s - {scene && typeof scene.end === 'number' && !isNaN(scene.end) ? scene.end.toFixed(1) : '0.0'}s</span>
                   </div>
                 </div>
               </div>
