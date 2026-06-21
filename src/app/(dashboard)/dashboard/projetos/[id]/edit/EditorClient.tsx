@@ -73,6 +73,7 @@ export default function EditorClient({ id }: EditorClientProps) {
   const [isCardDraggable, setIsCardDraggable] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [isUpdatingVoice, setIsUpdatingVoice] = useState(false);
+  const [playerKey, setPlayerKey] = useState<number>(0);
 
 
   // Painel de Mídias (Canva Interno)
@@ -399,6 +400,7 @@ export default function EditorClient({ id }: EditorClientProps) {
       if (result.success) {
         setAudioUrl(result.audio_url);
         setSubtitles(result.subtitles);
+        setPlayerKey(Date.now());
         alert('Voz e tempos de sincronização atualizados com sucesso!');
       }
     } catch (err: any) {
@@ -696,7 +698,8 @@ export default function EditorClient({ id }: EditorClientProps) {
         {/* Componente do Player Remotion */}
         <div className="w-full bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.08)] rounded-3xl p-3 flex flex-col items-center justify-center aspect-[9/16] relative overflow-hidden select-none">
           <PlayerWrapper
-            audioUrl={audioUrl}
+            key={playerKey}
+            audioUrl={audioUrl ? `${audioUrl}?t=${playerKey}` : ''}
             videoUrls={videoUrls}
             subtitles={subtitles}
             durationInFrames={durationInFrames}
