@@ -9,9 +9,10 @@ interface PlayerWrapperProps {
   videoUrls: string[];
   subtitles: SubtitleItem[];
   durationInFrames: number;
+  onActiveSceneChange?: (index: number) => void;
 }
 
-export default function PlayerWrapper({ audioUrl, videoUrls, subtitles }: PlayerWrapperProps) {
+export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActiveSceneChange }: PlayerWrapperProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const currentTimeRef = useRef(0);
@@ -61,6 +62,12 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles }: Player
   };
 
   const activeVideoIndex = getActiveVideoIndex();
+
+  useEffect(() => {
+    if (onActiveSceneChange) {
+      onActiveSceneChange(activeVideoIndex);
+    }
+  }, [activeVideoIndex, onActiveSceneChange]);
 
   useEffect(() => {
     currentTimeRef.current = currentTime;

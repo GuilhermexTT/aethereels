@@ -33,7 +33,9 @@ import {
   VolumeX,
   Plus,
   GripVertical,
-  RefreshCw
+  RefreshCw,
+  Trash2,
+  Copy
 } from 'lucide-react';
 import { SubtitleItem } from '@/video/types';
 
@@ -158,6 +160,10 @@ export default function EditorClient({ id }: EditorClientProps) {
   const [localFiles, setLocalFiles] = useState<{ [index: number]: File }>({});
   const [localUrls, setLocalUrls] = useState<string[]>([]);
   const [isWaitingQueue, setIsWaitingQueue] = useState(false);
+
+  // Estados para Evolução da Timeline
+  const [currentPlayingIndex, setCurrentPlayingIndex] = useState<number | null>(null);
+  const [activeTransitionPopover, setActiveTransitionPopover] = useState<number | null>(null);
 
   // Carrega a sessão do usuário e o rascunho do projeto
   useEffect(() => {
@@ -402,23 +408,16 @@ export default function EditorClient({ id }: EditorClientProps) {
     e.preventDefault();
   };
 
-  const handleDropScene = (index: number) => {
-    if (draggedIndex === null || draggedIndex === index) return;
-    
-    const reorderedSubs = [...subtitles];
-    const [draggedSub] = reorderedSubs.splice(draggedIndex, 1);
-    reorderedSubs.splice(index, 0, draggedSub);
-    
-    const reorderedVideos = [...videoUrls];
-    const [draggedVideo] = reorderedVideos.splice(draggedIndex, 1);
-    reorderedVideos.splice(index, 0, draggedVideo);
-    
-    // Recalcular tempos sequencialmente para manter sincronia
+  // Recalcular tempos sequencialmente para manter sincronia
+  const recalculateSubtitleTimes = (subs: SubtitleItem[]): SubtitleItem[] => {
     let currentStart = 0;
-    const finalSubs = reorderedSubs.map((sub) => {
-      const duration = sub.end - sub.start;
+    return subs.map((sub) => {
+      const duration = (typeof sub.end === 'number' && typeof sub.start === 'number')
+        ? (sub.end - sub.start)
+        : 3;
+      const safeDuration = isNaN(duration) || duration <= 0 ? 3 : duration;
       const start = currentStart;
-      const end = currentStart + duration;
+      const end = currentStart + safeDuration;
       currentStart = end;
       return {
         ...sub,
@@ -426,11 +425,135 @@ export default function EditorClient({ id }: EditorClientProps) {
         end
       };
     });
+  };
 
-    setSubtitles(finalSubs);
+  // Excluir uma cena
+  const handleDeleteScene = (index: number) => {
+    if (subtitles.length <= 1) {
+      alert("O vídeo precisa ter pelo menos uma cena.");
+      return;
+    }
+    const newSubs = [...subtitles];
+    newSubs.splice(index, 1);
+
+    const newVideos = [...videoUrls];
+    newVideos.splice(index, 1);
+
+    // Reajusta os arquivos locais correspondentes
+    const newLocalFiles = { ...localFiles };
+    delete newLocalFiles[index];
+    const adjustedLocalFiles: { [index: number]: File } = {};
+    Object.entries(newLocalFiles).forEach(([keyStr, file]) => {
+      const k = parseInt(keyStr, 10);
+      if (k > index) {
+        adjustedLocalFiles[k - 1] = file;
+      } else {
+        adjustedLocalFiles[k] = file;
+      }
+    });
+    setLocalFiles(adjustedLocalFiles);
+
+    setSubtitles(recalculateSubtitleTimes(newSubs));
+    setVideoUrls(newVideos);
+    setPlayerKey(Date.now());
+  };
+
+  // Duplicar uma cena
+  const handleDuplicateScene = (index: number) => {
+    const originalSub = subtitles[index];
+    const originalVideo = videoUrls[index];
+
+    const duplicatedSub: SubtitleItem = {
+      ...originalSub,
+      id: Math.random().toString(36).substring(2, 11),
+      text: originalSub.text + " (Cópia)",
+    };
+
+    const newSubs = [...subtitles];
+    newSubs.splice(index + 1, 0, duplicatedSub);
+
+    const newVideos = [...videoUrls];
+    newVideos.splice(index + 1, 0, originalVideo);
+
+    // Ajusta localFiles
+    const adjustedLocalFiles: { [index: number]: File } = {};
+    Object.entries(localFiles).forEach(([keyStr, file]) => {
+      const k = parseInt(keyStr, 10);
+      if (k > index) {
+        adjustedLocalFiles[k + 1] = file;
+      } else {
+        adjustedLocalFiles[k] = file;
+      }
+    });
+    if (localFiles[index]) {
+      adjustedLocalFiles[index + 1] = localFiles[index];
+    }
+    setLocalFiles(adjustedLocalFiles);
+
+    setSubtitles(recalculateSubtitleTimes(newSubs));
+    setVideoUrls(newVideos);
+    setPlayerKey(Date.now());
+  };
+
+  // Adicionar uma nova cena no final
+  const handleAddScene = () => {
+    const lastSubEnd = subtitles.length > 0 ? subtitles[subtitles.length - 1].end : 0;
+    const newSub: SubtitleItem = {
+      id: Math.random().toString(36).substring(2, 11),
+      start: lastSubEnd,
+      end: lastSubEnd + 3,
+      text: "Nova Cena",
+      transition: "none"
+    };
+
+    const defaultVideo = "https://assets.mixkit.co/videos/preview/mixkit-futuristic-subway-station-with-neon-lights-in-vertical-format-48227-large.mp4";
+
+    setSubtitles([...subtitles, newSub]);
+    setVideoUrls([...videoUrls, defaultVideo]);
+    setPlayerKey(Date.now());
+  };
+
+  // Atualizar transição de uma cena
+  const handleTransitionChange = (index: number, transition: 'none' | 'fade' | 'wipe') => {
+    const updated = [...subtitles];
+    updated[index] = {
+      ...updated[index],
+      transition
+    };
+    setSubtitles(updated);
+    setActiveTransitionPopover(null);
+  };
+
+  // Movimentação Inteligente: Mudar apenas as imagens/vídeos e localFiles, mantendo a ordem lógica do áudio/legendas intacta
+  const handleDropScene = (index: number) => {
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const reorderedVideos = [...videoUrls];
+    const [draggedVideo] = reorderedVideos.splice(draggedIndex, 1);
+    reorderedVideos.splice(index, 0, draggedVideo);
+
+    // Ajusta o mapeamento localFiles com base na movimentação das mídias
+    const newLocalFiles: { [index: number]: File } = {};
+    for (let i = 0; i < videoUrls.length; i++) {
+      let oldIdx = i;
+      if (draggedIndex < index) {
+        if (i === index) oldIdx = draggedIndex;
+        else if (i >= draggedIndex && i < index) oldIdx = i + 1;
+      } else {
+        if (i === index) oldIdx = draggedIndex;
+        else if (i > index && i <= draggedIndex) oldIdx = i - 1;
+      }
+      
+      if (localFiles[oldIdx]) {
+        newLocalFiles[i] = localFiles[oldIdx];
+      }
+    }
+    setLocalFiles(newLocalFiles);
+
     setVideoUrls(reorderedVideos);
     setDraggedIndex(null);
     setIsCardDraggable(false);
+    setPlayerKey(Date.now());
   };
 
   // Sincronizar e regenerar a voz de todas as cenas na ElevenLabs
@@ -840,6 +963,7 @@ export default function EditorClient({ id }: EditorClientProps) {
             videoUrls={videoUrls}
             subtitles={subtitles}
             durationInFrames={durationInFrames}
+            onActiveSceneChange={setCurrentPlayingIndex}
           />
 
           {isRendering && (
@@ -898,56 +1022,143 @@ export default function EditorClient({ id }: EditorClientProps) {
             const mediaUrl = videoUrls[index];
             const isImage = /\.(jpg|jpeg|png|webp|gif)($|\?)/i.test(mediaUrl || '');
             const duration = scene && typeof scene.end === 'number' && typeof scene.start === 'number' ? scene.end - scene.start : 3;
+            const isActivePlaying = index === currentPlayingIndex;
 
             return (
-              <div
-                key={`mini-${scene.id || index}`}
-                draggable
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDrop={() => handleDropScene(index)}
-                onClick={() => handleSceneClick(index)}
-                className={`relative w-28 aspect-[9/16] shrink-0 rounded-xl overflow-hidden border bg-slate-950 cursor-pointer transition-all duration-200 group/mini hover:scale-102 active:scale-98 ${
-                  draggedIndex === index 
-                    ? 'opacity-40 border-dashed border-indigo-500' 
-                    : 'border-blue-500/20 hover:border-blue-500/50 shadow-md shadow-blue-500/2'
-                }`}
-              >
-                {/* Miniatura de Mídia */}
-                {mediaUrl ? (
-                  isImage ? (
-                    <img src={mediaUrl} className="w-full h-full object-cover" alt="" />
-                  ) : (
-                    <video src={mediaUrl} className="w-full h-full object-cover" muted playsInline />
-                  )
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-700">
-                    <ImageIcon className="h-5 w-5" />
+              <React.Fragment key={`mini-frag-${scene.id || index}`}>
+                <div className="relative group/mini-container flex items-center shrink-0">
+                  <div
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={() => handleDropScene(index)}
+                    onClick={() => handleSceneClick(index)}
+                    className={`relative w-28 aspect-[9/16] shrink-0 rounded-xl overflow-hidden border bg-slate-950 cursor-pointer transition-all duration-350 group/mini ${
+                      isActivePlaying
+                        ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.65)] scale-[1.03] z-10'
+                        : (draggedIndex === index 
+                            ? 'opacity-40 border-dashed border-indigo-500' 
+                            : 'border-blue-500/20 hover:border-blue-500/50 hover:scale-[1.02] active:scale-98 shadow-md shadow-blue-500/2')
+                    }`}
+                  >
+                    {/* Miniatura de Mídia */}
+                    {mediaUrl ? (
+                      isImage ? (
+                        <img src={mediaUrl} className="w-full h-full object-cover" alt="" />
+                      ) : (
+                        <video src={mediaUrl} className="w-full h-full object-cover" muted playsInline />
+                      )
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-700">
+                        <ImageIcon className="h-5 w-5" />
+                      </div>
+                    )}
+
+                    {/* Overlay de gradiente */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/40 z-10" />
+
+                    {/* Badges superiores (Numeração) */}
+                    <div className="absolute top-1.5 left-1.5 z-20 flex items-center justify-center h-4.5 w-4.5 rounded bg-slate-900/90 border border-slate-800 text-[8px] text-slate-400 font-bold">
+                      {index + 1}
+                    </div>
+
+                    {/* Botões de Ações Flutuantes no Hover */}
+                    <div className="absolute top-1.5 right-1.5 z-30 flex items-center gap-1 opacity-0 group-hover/mini:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDuplicateScene(index);
+                        }}
+                        className="p-1 rounded bg-slate-950/90 border border-slate-850 text-slate-400 hover:text-indigo-400 hover:border-indigo-500/40 transition-all shadow-md active:scale-90"
+                        title="Duplicar Cena"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteScene(index);
+                        }}
+                        className="p-1 rounded bg-slate-950/90 border border-slate-855 text-slate-400 hover:text-red-400 hover:border-red-500/40 transition-all shadow-md active:scale-90"
+                        title="Excluir Cena"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+
+                    {/* Duração no rodapé */}
+                    <div className="absolute bottom-1.5 right-1.5 z-20 text-[8px] text-white/90 bg-black/60 border border-white/5 rounded px-1 py-0.5 font-bold">
+                      {duration.toFixed(1)}s
+                    </div>
+
+                    {/* Texto da legenda ao passar o mouse */}
+                    <div className="absolute inset-0 z-20 flex items-center justify-center p-2 opacity-0 group-hover/mini:opacity-100 bg-black/75 backdrop-blur-3xs transition-opacity select-none text-center">
+                      <p className="text-[8px] text-slate-200 font-medium line-clamp-4 leading-normal">
+                        {scene.text || 'Sem texto'}
+                      </p>
+                    </div>
                   </div>
-                )}
 
-                {/* Overlay de gradiente */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/40 z-10" />
+                  {/* Transição nos entremeios (apenas entre os cards) */}
+                  {index < subtitles.length - 1 && (
+                    <div className="mx-1.5 relative z-40 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveTransitionPopover(activeTransitionPopover === index ? null : index);
+                        }}
+                        className={`p-1.5 rounded-full border transition-all active:scale-90 cursor-pointer shadow-[0_0_10px_rgba(0,0,0,0.5)] ${
+                          scene.transition && scene.transition !== 'none'
+                            ? 'bg-indigo-600/90 border-indigo-400 text-indigo-200'
+                            : 'bg-[#090e18] border-slate-800/80 text-slate-500 hover:text-slate-200 hover:border-slate-700'
+                        }`}
+                        title={`Transição: ${scene.transition || 'Nenhuma'}`}
+                      >
+                        <span className="text-[9px] font-bold px-0.5 leading-none">
+                          {scene.transition === 'fade' ? '✨' : scene.transition === 'wipe' ? '➡️' : '⧉'}
+                        </span>
+                      </button>
 
-                {/* Badges superiores */}
-                <div className="absolute top-1.5 left-1.5 z-20 flex items-center justify-center h-4.5 w-4.5 rounded bg-slate-900/90 border border-slate-800 text-[8px] text-slate-400 font-bold">
-                  {index + 1}
+                      {/* Popover de transição */}
+                      {activeTransitionPopover === index && (
+                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-28 bg-[#060a13] border border-blue-500/30 rounded-xl p-1.5 shadow-2xl flex flex-col gap-1 z-50 animate-fade-in">
+                          <span className="text-[8px] text-slate-500 uppercase font-extrabold px-1.5 py-0.5 select-none">Transição</span>
+                          {(['none', 'fade', 'wipe'] as const).map((opt) => (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => handleTransitionChange(index, opt)}
+                              className={`px-2 py-1 text-left text-[9px] font-bold rounded-lg transition-all ${
+                                (scene.transition || 'none') === opt
+                                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+                              }`}
+                            >
+                              {opt === 'none' ? '❌ Nenhuma' : opt === 'fade' ? '✨ Fade' : '➡️ Wipe'}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-
-                {/* Duração no rodapé */}
-                <div className="absolute bottom-1.5 right-1.5 z-20 text-[8px] text-white/90 bg-black/60 border border-white/5 rounded px-1 py-0.5 font-bold">
-                  {duration.toFixed(1)}s
-                </div>
-
-                {/* Texto da legenda ao passar o mouse */}
-                <div className="absolute inset-0 z-20 flex items-center justify-center p-2 opacity-0 group-hover/mini:opacity-100 bg-black/75 backdrop-blur-3xs transition-opacity select-none text-center">
-                  <p className="text-[8px] text-slate-200 font-medium line-clamp-4 leading-normal">
-                    {scene.text || 'Sem texto'}
-                  </p>
-                </div>
-              </div>
+              </React.Fragment>
             );
           })}
+
+          {/* Card Estático de Adicionar Nova Cena (+) */}
+          <div 
+            onClick={handleAddScene}
+            className="w-28 aspect-[9/16] shrink-0 rounded-xl border border-dashed border-[#15233c] hover:border-blue-500/50 hover:bg-blue-500/2 bg-slate-950/20 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all duration-300 active:scale-98 group/add"
+          >
+            <div className="h-8 w-8 rounded-full bg-slate-900 border border-slate-800 group-hover/add:border-blue-500/40 group-hover/add:bg-slate-800 flex items-center justify-center transition-colors">
+              <Plus className="h-4 w-4 text-slate-400 group-hover/add:text-blue-400 transition-colors" />
+            </div>
+            <span className="text-[9px] font-bold text-slate-500 group-hover/add:text-blue-400/80 transition-colors">Adicionar Cena</span>
+          </div>
         </div>
       </div>
 

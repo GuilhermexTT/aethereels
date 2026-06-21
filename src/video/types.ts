@@ -6,6 +6,7 @@ export interface SubtitleItem {
   start_time?: number;
   duration?: number;
   word?: string;
+  transition?: 'none' | 'fade' | 'wipe';
 }
 
 export interface RemotionVideoProps {
