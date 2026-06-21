@@ -25,7 +25,7 @@ import { useRouter } from 'next/navigation';
 interface VideoJob {
   id: string;
   user_id: string;
-  prompt: string;
+  prompt_input: string;
   status: 'pending' | 'scripting' | 'processing' | 'rendering' | 'completed' | 'ready' | 'failed' | 'draft';
   video_url: string | null;
   created_at: string;
@@ -408,7 +408,7 @@ export default function HistoryPage() {
                 <div className="p-4 z-20 w-full bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent flex flex-col gap-3.5">
                   {/* Prompt do Vídeo */}
                   <p className="text-xs text-slate-200 leading-relaxed font-medium line-clamp-3 group-hover/card:text-white transition-colors">
-                    {video.prompt || 'Sem prompt definido'}
+                    {video.prompt_input || 'Sem prompt definido'}
                   </p>
 
                   <div className="flex items-center justify-between border-t border-white/5 pt-3">
@@ -491,7 +491,7 @@ export default function HistoryPage() {
               <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin">
                 <p className="text-sm font-semibold text-white">Prompt Original</p>
                 <p className="text-xs text-slate-300 leading-relaxed font-medium">
-                  {selectedVideo.prompt}
+                  {selectedVideo.prompt_input}
                 </p>
               </div>
 

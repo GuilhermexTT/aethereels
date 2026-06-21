@@ -5,7 +5,7 @@ export function middleware(request: NextRequest) {
   const response = NextResponse.next();
 
   // Define Content-Security-Policy header
-  const cspValue = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' blob:; connect-src * 'unsafe-inline'; img-src * data: blob:; frame-src *; style-src * 'unsafe-inline';";
+  const cspValue = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' blob:; connect-src *; img-src * data: blob:; frame-src *; style-src * 'unsafe-inline';";
   
   response.headers.set('Content-Security-Policy', cspValue);
   
