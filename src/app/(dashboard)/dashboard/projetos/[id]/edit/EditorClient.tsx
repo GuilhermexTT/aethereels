@@ -74,6 +74,7 @@ export default function EditorClient({ id }: EditorClientProps) {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [isUpdatingVoice, setIsUpdatingVoice] = useState(false);
   const [playerKey, setPlayerKey] = useState<number>(0);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
 
 
   // Painel de Mídias (Canva Interno)
@@ -563,7 +564,7 @@ export default function EditorClient({ id }: EditorClientProps) {
   }
 
   return (
-    <div className="flex h-[calc(100vh-100px)] overflow-hidden gap-8 relative select-none pb-[230px]">
+    <div className="flex h-[calc(100vh-100px)] overflow-hidden gap-8 relative select-none">
       {/* Esquerda: Linha do Tempo e Controle de Cenas */}
       <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-5">
         <div className="flex items-center justify-between border-b border-[#15233c]/20 pb-4">
@@ -748,11 +749,24 @@ export default function EditorClient({ id }: EditorClientProps) {
         </div>
       </div>
 
-      {/* Mini Timeline Inferior (Estilo CapCut/Canva) */}
-      <div className="absolute bottom-0 left-0 right-0 bg-[#050914]/95 border-t border-[#15233c] py-4 px-6 flex flex-col gap-2 select-none backdrop-blur-md z-30">
+      {/* Mini Timeline Inferior (Estilo CapCut/Canva) - Bottom Drawer */}
+      <div 
+        className={`fixed bottom-0 left-0 md:left-64 right-0 z-50 bg-[#050914]/95 border-t border-[#15233c] py-4 px-6 flex flex-col gap-2 select-none backdrop-blur-md shadow-[0_-15px_30px_rgba(0,0,0,0.6)] transition-all duration-300 transform ${
+          isTimelineOpen ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
+        }`}
+      >
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider">Timeline de Cenas</span>
-          <span className="text-[9px] text-slate-500">Arraste para reordenar • Clique para navegar</span>
+          <div className="flex items-center gap-3">
+            <span className="text-[9px] text-slate-500">Arraste para reordenar • Clique para navegar</span>
+            <button 
+              type="button"
+              onClick={() => setIsTimelineOpen(false)}
+              className="px-2.5 py-1 rounded-lg bg-slate-900/60 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-[10px] font-bold text-slate-400 hover:text-white transition-all active:scale-95 cursor-pointer"
+            >
+              Ocultar
+            </button>
+          </div>
         </div>
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
           {subtitles.map((scene, index) => {
@@ -768,7 +782,7 @@ export default function EditorClient({ id }: EditorClientProps) {
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDrop={() => handleDropScene(index)}
                 onClick={() => handleSceneClick(index)}
-                className={`relative w-20 aspect-[9/16] shrink-0 rounded-xl overflow-hidden border bg-slate-950 cursor-pointer transition-all duration-200 group/mini hover:scale-102 active:scale-98 ${
+                className={`relative w-28 aspect-[9/16] shrink-0 rounded-xl overflow-hidden border bg-slate-950 cursor-pointer transition-all duration-200 group/mini hover:scale-102 active:scale-98 ${
                   draggedIndex === index 
                     ? 'opacity-40 border-dashed border-indigo-500' 
                     : 'border-blue-500/20 hover:border-blue-500/50 shadow-md shadow-blue-500/2'
@@ -811,6 +825,18 @@ export default function EditorClient({ id }: EditorClientProps) {
           })}
         </div>
       </div>
+
+      {/* Botão de Toggle para Mostrar Timeline */}
+      {!isTimelineOpen && (
+        <button
+          type="button"
+          onClick={() => setIsTimelineOpen(true)}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 md:left-[calc(50%+128px)] z-40 px-5 py-2.5 bg-[#0a1120]/95 hover:bg-[#121d36] border border-blue-500/40 hover:border-blue-500/70 text-xs font-bold text-slate-200 hover:text-white rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.4),0_0_20px_rgba(59,130,246,0.15)] active:scale-95 transition-all duration-200 flex items-center gap-2 cursor-pointer"
+        >
+          <span>👁️</span>
+          <span>Mostrar Timeline</span>
+        </button>
+      )}
 
       {/* Painel Lateral Retrátil de Mídias (Estilo Canva Interno) */}
       {mediaPanelOpen && (
