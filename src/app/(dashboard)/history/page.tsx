@@ -365,21 +365,43 @@ export default function HistoryPage() {
 
                 {/* 4. ESTADO RASCUNHO */}
                 {isDraft && (
-                  <div className="absolute inset-0 bg-[#070c19]/70 z-10 flex flex-col justify-center items-center gap-3.5 p-6 text-center select-none">
-                    <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 group-hover/card:bg-amber-500/20 group-hover/card:border-amber-500/40 transition-all duration-300">
-                      <Sparkles className="h-6 w-6 text-amber-400 group-hover/card:scale-110 transition-transform duration-300" />
-                      <span className="absolute inset-0 rounded-2xl bg-amber-400/5 animate-pulse" />
-                    </div>
+                  <>
+                    {(() => {
+                      const scriptData = typeof video.script_json === 'string' 
+                        ? JSON.parse(video.script_json) 
+                        : video.script_json;
+                      const previewVideoUrl = scriptData?.video_urls?.[0] || scriptData?.b_roll_videos?.[0] || (scriptData?.scenes?.[0]?.video_url);
+
+                      return previewVideoUrl ? (
+                        <video
+                          src={previewVideoUrl}
+                          preload="metadata"
+                          muted
+                          loop
+                          playsInline
+                          autoPlay
+                          className="absolute inset-0 w-full h-full object-cover opacity-35 bg-black transition-transform duration-500 group-hover/card:scale-105"
+                        />
+                      ) : null;
+                    })()}
                     
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-slate-200 group-hover/card:text-white transition-colors">
-                        Editor Inteligente
-                      </p>
-                      <p className="text-[10px] text-slate-500">
-                        Clique para editar o rascunho
-                      </p>
+                    {/* Overlay de gradiente para contraste e visual do editor */}
+                    <div className="absolute inset-0 bg-[#070c19]/70 group-hover/card:bg-[#070c19]/60 transition-colors z-10 flex flex-col justify-center items-center gap-3.5 p-6 text-center select-none backdrop-blur-[1px]">
+                      <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 group-hover/card:bg-amber-500/20 group-hover/card:border-amber-500/40 transition-all duration-300">
+                        <Sparkles className="h-6 w-6 text-amber-400 group-hover/card:scale-110 transition-transform duration-300" />
+                        <span className="absolute inset-0 rounded-2xl bg-amber-400/5 animate-pulse" />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-slate-200 group-hover/card:text-white transition-colors">
+                          Editor Inteligente
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          Clique para editar o rascunho
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
 
                 {/* Tags de status no topo do Card */}
