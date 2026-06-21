@@ -582,8 +582,9 @@ export default function CreationDashboard() {
         .channel(`job-progress-${jobId}`)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'video_jobs', filter: `id=eq.${jobId}` }, (payload: any) => {
           const updatedJob = payload.new;
+          console.log("🔄 [Realtime Event] Job atualizado no banco:", updatedJob);
 
-          if (updatedJob.status === 'ready') {
+          if (updatedJob.status === 'ready' || updatedJob.status === 'draft') {
             setLoadingProgress(100);
             setLoadingLog('Pronto!');
             channel.unsubscribe();
