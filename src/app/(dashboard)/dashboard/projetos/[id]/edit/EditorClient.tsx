@@ -35,7 +35,11 @@ import {
   GripVertical,
   RefreshCw,
   Trash2,
-  Copy
+  Copy,
+  Send,
+  MessageSquare,
+  Bot,
+  User
 } from 'lucide-react';
 import { SubtitleItem } from '@/video/types';
 
@@ -131,6 +135,26 @@ export default function EditorClient({ id }: EditorClientProps) {
   const [userId, setUserId] = useState<string | null>(null);
   const [credits, setCredits] = useState(0);
   const [draftDbId, setDraftDbId] = useState<string | null>(null);
+
+  // Estados para Geração Inteligente e Consultoria n8n
+  const [generationMode, setGenerationMode] = useState<'prompt' | 'consultant'>('prompt');
+  const [chatMessages, setChatMessages] = useState<Array<{ sender: 'user' | 'bot'; text: string }>>([
+    {
+      sender: 'bot',
+      text: "🤖 Consultor Aether: Olá! Sou o seu consultor estratégico privado. Vamos planejar o seu Reels de hoje usando o poder do Gemini 2.5? Me conte, qual é o seu nicho?"
+    }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [isConsultantLoading, setIsConsultantLoading] = useState(false);
+  const [recommendedPrompt, setRecommendedPrompt] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Scroll automático para a última mensagem do chat
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, isConsultantLoading]);
 
   // Drag and drop & Voice update states
   const [isCardDraggable, setIsCardDraggable] = useState(false);
@@ -797,6 +821,59 @@ export default function EditorClient({ id }: EditorClientProps) {
     }
   };
 
+  // Enviar mensagem no chat da consultoria Aether (n8n/Gemini 2.5)
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || isConsultantLoading) return;
+
+    const userMsg = chatInput.trim();
+    setChatMessages(prev => [...prev, { sender: 'user', text: userMsg }]);
+    setChatInput('');
+    setIsConsultantLoading(true);
+
+    // Simula a resposta do n8n / Gemini 2.5
+    setTimeout(() => {
+      setIsConsultantLoading(false);
+      let reply = '';
+      
+      const lower = userMsg.toLowerCase();
+      if (lower.includes('nicho') || lower.includes('marketing') || lower.includes('venda') || lower.includes('finanças') || lower.includes('tecnologia') || lower.includes('educação')) {
+        reply = `🤖 Consultor Aether: Excelente nicho! Para o segmento de "${userMsg}", um Reels dinâmico com ganchos de curiosidade e forte impacto visual funciona extremamente bem. O que acha de abordarmos '3 Dicas Rápidas que ninguém te conta' ou 'O segredo para dominar esse nicho'? Qual destes caminhos você prefere?`;
+      } else if (lower.includes('dica') || lower.includes('segredo') || lower.includes('primeiro') || lower.includes('1') || lower.includes('2')) {
+        reply = "🤖 Consultor Aether: Ótima escolha! Desenvolvi a estrutura do roteiro ideal. Aqui está o prompt estratégico recomendado para a geração do seu vídeo:\n\n'Gere um reels ultra moderno sobre produtividade e foco nesse nicho, destacando 3 hábitos essenciais com música eletrônica envolvente e visual neon futurista.'\n\nProntinho! Se aprovar, clique no botão principal 'Gerar Vídeo' logo abaixo.";
+        setRecommendedPrompt("Gere um reels ultra moderno sobre produtividade e foco nesse nicho, destacando 3 hábitos essenciais com música eletrônica envolvente e visual neon futurista.");
+      } else {
+        reply = "🤖 Consultor Aether: Entendi perfeitamente! Para dar início, preparei uma recomendação estratégica com o seguinte prompt:\n\n'Crie um vídeo Reels cinemático e inspirador, focando em consistência e evolução, com visual marcante em tons neon escuros.'\n\nO prompt já está configurado. O que acha de testarmos clicando em 'Gerar Vídeo'?";
+        setRecommendedPrompt("Crie um vídeo Reels cinemático e inspirador, focando em consistência e evolução, com visual marcante em tons neon escuros.");
+      }
+
+      setChatMessages(prev => [...prev, { sender: 'bot', text: reply }]);
+    }, 2000);
+  };
+
+  // Dispara a geração de vídeo com base no modo selecionado (Prompt ou Consultor)
+  const handleGenerateVideoFromMode = async () => {
+    let finalPrompt = '';
+    if (generationMode === 'prompt') {
+      if (!promptInput.trim()) {
+        alert('Por favor, digite um prompt para gerar o vídeo.');
+        return;
+      }
+      finalPrompt = promptInput.trim();
+    } else {
+      if (!recommendedPrompt) {
+        alert('O Consultor ainda não sugeriu um roteiro. Converse com ele até aprovar uma sugestão!');
+        return;
+      }
+      finalPrompt = recommendedPrompt;
+    }
+
+    // Estrutura de estados preparada para enviar e receber dados de uma API futura com n8n
+    alert(`[Simulação n8n/Gemini 2.5] Disparando criação com o prompt:\n"${finalPrompt}"`);
+    
+    // Simulação visual de carregamento de geração
+    setPromptInput(finalPrompt);
+  };
+
   // Cálculo dinâmico da duração total do vídeo
   const lastSub = subtitles.length > 0 ? subtitles[subtitles.length - 1] : null;
   const totalSec = lastSub && typeof lastSub.end === 'number' && !isNaN(lastSub.end) ? lastSub.end : 15;
@@ -852,6 +929,167 @@ export default function EditorClient({ id }: EditorClientProps) {
               <span>Salvar Rascunho</span>
             </button>
           </div>
+        </div>
+
+        {/* Painel de Geração Inteligente e Consultor Aether */}
+        <div className="bg-[#060a13] border border-[#1e2d4a]/85 shadow-[0_0_25px_rgba(59,130,246,0.06)] rounded-2xl p-5 flex flex-col gap-4 relative overflow-hidden transition-all duration-300">
+          {/* Decoração sutil de luz de fundo */}
+          <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="flex items-center justify-between z-10">
+            <span className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-1.5 select-none">
+              <Sparkles className="h-3.5 w-3.5 text-indigo-400 animate-pulse" />
+              Geração de Roteiro Inteligente
+            </span>
+            
+            {/* Switcher de Modos (Pills Neon) */}
+            <div className="flex bg-slate-950/80 p-1 rounded-full border border-slate-900 shadow-inner select-none relative z-10">
+              <button
+                type="button"
+                onClick={() => setGenerationMode('prompt')}
+                className={`flex items-center gap-1.5 px-4 py-1.5 text-[10px] font-bold rounded-full transition-all duration-300 cursor-pointer ${
+                  generationMode === 'prompt'
+                    ? 'bg-gradient-to-r from-blue-600/20 to-indigo-600/20 text-indigo-400 border border-indigo-500/40 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
+                    : 'text-slate-500 hover:text-slate-300 border border-transparent'
+                }`}
+              >
+                <span>📝</span>
+                <span>Prompt Direto</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setGenerationMode('consultant')}
+                className={`flex items-center gap-1.5 px-4 py-1.5 text-[10px] font-bold rounded-full transition-all duration-300 cursor-pointer ${
+                  generationMode === 'consultant'
+                    ? 'bg-gradient-to-r from-blue-600/20 to-indigo-600/20 text-indigo-400 border border-indigo-500/40 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
+                    : 'text-slate-500 hover:text-slate-300 border border-transparent'
+                }`}
+              >
+                <span>🤖</span>
+                <span>Consultor Aether</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Renderização do Modo de Geração */}
+          {generationMode === 'prompt' ? (
+            <div className="flex flex-col gap-3.5 z-10 animate-fade-in">
+              <div className="relative rounded-xl border border-slate-900 bg-slate-950/40 p-3.5 transition-all focus-within:border-indigo-500/30">
+                <textarea
+                  value={promptInput}
+                  onChange={(e) => setPromptInput(e.target.value)}
+                  placeholder="Escreva a ideia geral do seu Reels para a IA criar o roteiro..."
+                  className="w-full h-24 bg-transparent text-slate-200 placeholder-slate-600 text-xs outline-none resize-none leading-relaxed"
+                />
+                <div className="flex items-center justify-between border-t border-slate-900/40 pt-2.5 mt-1 select-none text-[10px] text-slate-500 font-semibold">
+                  <span>{promptInput.length} caracteres</span>
+                  <span>Modo Rápido</span>
+                </div>
+              </div>
+              
+              <button
+                type="button"
+                onClick={handleGenerateVideoFromMode}
+                className="w-full bg-gradient-to-r from-blue-600 to-[#7c3aed] hover:from-blue-500 hover:to-[#6d28d9] py-3 rounded-xl font-bold text-xs text-white transition-all duration-200 active:scale-[0.99] flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(99,102,241,0.12)] cursor-pointer"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Gerar Vídeo</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3.5 z-10 animate-fade-in">
+              {/* Janela de Chat (Scroll Interno) */}
+              <div className="h-60 bg-slate-950/50 border border-slate-900 rounded-xl p-4 overflow-y-auto flex flex-col gap-4.5 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                {chatMessages.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`flex gap-2 max-w-[85%] ${
+                      msg.sender === 'user' ? 'self-end flex-row-reverse' : 'self-start'
+                    }`}
+                  >
+                    <div
+                      className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 border ${
+                        msg.sender === 'user'
+                          ? 'bg-indigo-650/10 border-indigo-500/20 text-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.1)]'
+                          : 'bg-[#0b0f19] border-slate-800 text-slate-400 shadow-[0_0_8px_rgba(0,0,0,0.3)]'
+                      }`}
+                    >
+                      {msg.sender === 'user' ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
+                    </div>
+                    <div
+                      className={`rounded-2xl p-3 text-xs leading-relaxed whitespace-pre-wrap ${
+                        msg.sender === 'user'
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-tr-none shadow-[0_4px_10px_rgba(37,99,235,0.15)]'
+                          : 'bg-[#080c16] border border-[#15233c]/60 text-slate-200 rounded-tl-none shadow-md'
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Indicador de Digitação do Consultor */}
+                {isConsultantLoading && (
+                  <div className="flex gap-2 self-start max-w-[85%] items-center animate-pulse">
+                    <div className="h-7 w-7 rounded-full bg-[#0b0f19] border border-slate-800 flex items-center justify-center text-slate-400 shadow-[0_0_8px_rgba(0,0,0,0.3)]">
+                      <Bot className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="bg-[#080c16] border border-[#15233c]/60 rounded-2xl rounded-tl-none p-3.5 text-xs text-slate-400 flex items-center gap-2 shadow-md">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400" />
+                      <span>🤖 Consultor está digitando...</span>
+                    </div>
+                  </div>
+                )}
+                
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Input de Mensagem */}
+              <div className="relative flex items-center bg-slate-950/80 border border-slate-900 focus-within:border-indigo-500/35 rounded-xl px-3 py-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  disabled={isConsultantLoading}
+                  placeholder={isConsultantLoading ? "🤖 Consultor está pensando..." : "Fale com o Consultor Estratégico Aether..."}
+                  className="bg-transparent text-slate-200 outline-none w-full text-xs placeholder-slate-650 disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={handleSendMessage}
+                  disabled={isConsultantLoading || !chatInput.trim()}
+                  className="p-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  title="Enviar mensagem"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {/* Botão de Geração Inteligente baseada no n8n */}
+              <div className="flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleGenerateVideoFromMode}
+                  disabled={!recommendedPrompt}
+                  className="w-full bg-gradient-to-r from-blue-600 to-[#7c3aed] hover:from-blue-500 hover:to-[#6d28d9] disabled:from-slate-900 disabled:to-slate-900 disabled:border-slate-800/80 disabled:text-slate-500 py-3.5 rounded-xl font-bold text-xs text-white transition-all duration-200 active:scale-[0.99] flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(99,102,241,0.15)] disabled:shadow-none border border-transparent disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>Gerar Vídeo</span>
+                </button>
+                {recommendedPrompt ? (
+                  <span className="text-[9px] text-indigo-400 font-semibold text-center select-none animate-pulse">
+                    ✨ Roteiro estratégico pronto! Clique acima para gerar o vídeo.
+                  </span>
+                ) : (
+                  <span className="text-[9px] text-slate-555 text-center select-none">
+                    Defina seu nicho e objetivos com o consultor para liberar a geração do Reels.
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Lista de cards das cenas (Estilo Notion) */}
