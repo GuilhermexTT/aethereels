@@ -4,9 +4,11 @@ import { RemotionVideoProps } from './types';
 import { VideoSequence } from './VideoSequence';
 import { SubtitleOverlay } from './SubtitleOverlay';
 
-export const MainComposition: React.FC = () => {
-  const props = getInputProps() as unknown as RemotionVideoProps;
-  const { audio_url, video_urls, subtitles } = props;
+export const MainComposition: React.FC<RemotionVideoProps> = (propsFromPlayer) => {
+  const propsFromCLI = getInputProps() as unknown as RemotionVideoProps;
+  const audio_url = propsFromPlayer?.audio_url || propsFromCLI?.audio_url;
+  const video_urls = propsFromPlayer?.video_urls || propsFromCLI?.video_urls;
+  const subtitles = propsFromPlayer?.subtitles || propsFromCLI?.subtitles;
 
   // Normalização das legendas para garantir que todas possuam start e end definidos
   const normalizedSubtitles = (subtitles || []).map((sub, index) => {

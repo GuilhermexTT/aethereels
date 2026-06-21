@@ -8,7 +8,7 @@ export const Root: React.FC = () => {
     <>
       <Composition
         id="Reels"
-        component={MainComposition}
+        component={MainComposition as any}
         fps={30}
         width={1080}
         height={1920}
