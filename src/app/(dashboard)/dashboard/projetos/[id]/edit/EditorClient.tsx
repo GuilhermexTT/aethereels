@@ -563,10 +563,8 @@ export default function EditorClient({ id }: EditorClientProps) {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)] overflow-hidden gap-4 relative select-none">
-      {/* Container Superior (Editor Principal + Player) */}
-      <div className="flex flex-1 overflow-hidden gap-8">
-        {/* Esquerda: Linha do Tempo e Controle de Cenas */}
+    <div className="flex h-[calc(100vh-100px)] overflow-hidden gap-8 relative select-none pb-[230px]">
+      {/* Esquerda: Linha do Tempo e Controle de Cenas */}
       <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-5">
         <div className="flex items-center justify-between border-b border-[#15233c]/20 pb-4">
           <div className="flex items-center gap-3">
@@ -749,10 +747,9 @@ export default function EditorClient({ id }: EditorClientProps) {
           </div>
         </div>
       </div>
-    </div>
 
-    {/* Mini Timeline Inferior (Estilo CapCut/Canva) */}
-      <div className="w-full bg-[#050914]/90 border-t border-[#15233c] py-4 px-6 flex flex-col gap-2 shrink-0 select-none backdrop-blur-md">
+      {/* Mini Timeline Inferior (Estilo CapCut/Canva) */}
+      <div className="absolute bottom-0 left-0 right-0 bg-[#050914]/95 border-t border-[#15233c] py-4 px-6 flex flex-col gap-2 select-none backdrop-blur-md z-30">
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider">Timeline de Cenas</span>
           <span className="text-[9px] text-slate-500">Arraste para reordenar • Clique para navegar</span>
@@ -771,7 +768,7 @@ export default function EditorClient({ id }: EditorClientProps) {
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDrop={() => handleDropScene(index)}
                 onClick={() => handleSceneClick(index)}
-                className={`relative w-28 aspect-[9/16] shrink-0 rounded-xl overflow-hidden border bg-slate-950 cursor-pointer transition-all duration-200 group/mini hover:scale-102 active:scale-98 ${
+                className={`relative w-20 aspect-[9/16] shrink-0 rounded-xl overflow-hidden border bg-slate-950 cursor-pointer transition-all duration-200 group/mini hover:scale-102 active:scale-98 ${
                   draggedIndex === index 
                     ? 'opacity-40 border-dashed border-indigo-500' 
                     : 'border-blue-500/20 hover:border-blue-500/50 shadow-md shadow-blue-500/2'
