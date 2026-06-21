@@ -401,7 +401,9 @@ export default function EditorClient({ id }: EditorClientProps) {
         setAudioUrl(result.audio_url);
         setSubtitles(result.subtitles);
         setPlayerKey(Date.now());
-        alert('Voz e tempos de sincronização atualizados com sucesso!');
+        setTimeout(() => {
+          alert('Voz e tempos de sincronização atualizados com sucesso!');
+        }, 100);
       }
     } catch (err: any) {
       alert('Erro ao atualizar voz: ' + err.message);

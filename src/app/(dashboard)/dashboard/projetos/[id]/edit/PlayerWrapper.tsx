@@ -66,6 +66,25 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles }: Player
     currentTimeRef.current = currentTime;
   }, [currentTime]);
 
+  // Forçar o recarregamento do áudio e resetar estados de reprodução ao alterar a URL do áudio (ex: no "Atualizar Voz")
+  useEffect(() => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+    currentTimeRef.current = 0;
+    setAudioDuration(0);
+    
+    if (audioRef.current) {
+      audioRef.current.load();
+    }
+
+    videoRefs.current.forEach(video => {
+      if (video) {
+        video.pause();
+        video.currentTime = 0;
+      }
+    });
+  }, [audioUrl]);
+
   // Master update loop synchronized with the audio tag or running on requestAnimationFrame
   useEffect(() => {
     if (!isPlaying) return;
