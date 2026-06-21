@@ -320,7 +320,14 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
       `}</style>
 
       {/* Viewport 9:16 Responsivo / Auto-ajustável */}
-      <div className="w-full h-full aspect-[9/16] relative flex flex-col justify-end max-h-full">
+      <div 
+        className="w-full h-full relative flex flex-col justify-end" 
+        style={{
+          maxWidth: 'calc(100vh * 9 / 16)',
+          maxHeight: 'calc(100vw * 16 / 9)',
+          aspectRatio: '9/16'
+        }}
+      >
         {/* Renderização das cenas de vídeos em paralelo */}
         {videoUrls.map((url, idx) => {
           const videoSrc = typeof url === 'object' && url !== null 
