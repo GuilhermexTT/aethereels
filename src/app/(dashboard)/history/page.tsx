@@ -162,7 +162,15 @@ export default function HistoryPage() {
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      const res = await fetch(`/api/video/delete?id=${deleteTarget.id}`, { method: 'DELETE' });
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      const res = await fetch(`/api/video/delete?id=${deleteTarget.id}`, {
+        method: 'DELETE',
+        headers: {
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+        }
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Erro desconhecido');
       setVideos((prev) => prev.filter((v) => v.id !== deleteTarget.id));

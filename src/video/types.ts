@@ -1,4 +1,5 @@
 export interface SubtitleItem {
+  id?: string;
   text: string;
   start: number; // em segundos
   end: number;   // em segundos

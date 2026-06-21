@@ -31,7 +31,9 @@ import {
   Rocket,
   Volume2,
   VolumeX,
-  Plus
+  Plus,
+  GripVertical,
+  RefreshCw
 } from 'lucide-react';
 import { SubtitleItem } from '@/video/types';
 
@@ -66,6 +68,11 @@ export default function EditorClient({ id }: EditorClientProps) {
   const [userId, setUserId] = useState<string | null>(null);
   const [credits, setCredits] = useState(0);
   const [draftDbId, setDraftDbId] = useState<string | null>(null);
+
+  // Drag and drop & Voice update states
+  const [isCardDraggable, setIsCardDraggable] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [isUpdatingVoice, setIsUpdatingVoice] = useState(false);
 
 
   // Painel de Mídias (Canva Interno)
@@ -165,6 +172,7 @@ export default function EditorClient({ id }: EditorClientProps) {
               
               currentStart = safeEnd;
               return {
+                id: sub.id || Math.random().toString(36).substring(2, 11),
                 start: safeStart,
                 end: safeEnd,
                 text: String(sub.text || sub.word || '')
@@ -319,6 +327,84 @@ export default function EditorClient({ id }: EditorClientProps) {
       alert('Falha ao enviar arquivo: ' + err.message);
     } finally {
       setUploading(false);
+    }
+  };
+
+  // Funções de Reordenação (Drag and Drop)
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+  };
+
+  const handleDropScene = (index: number) => {
+    if (draggedIndex === null || draggedIndex === index) return;
+    
+    const reorderedSubs = [...subtitles];
+    const [draggedSub] = reorderedSubs.splice(draggedIndex, 1);
+    reorderedSubs.splice(index, 0, draggedSub);
+    
+    const reorderedVideos = [...videoUrls];
+    const [draggedVideo] = reorderedVideos.splice(draggedIndex, 1);
+    reorderedVideos.splice(index, 0, draggedVideo);
+    
+    // Recalcular tempos sequencialmente para manter sincronia
+    let currentStart = 0;
+    const finalSubs = reorderedSubs.map((sub) => {
+      const duration = sub.end - sub.start;
+      const start = currentStart;
+      const end = currentStart + duration;
+      currentStart = end;
+      return {
+        ...sub,
+        start,
+        end
+      };
+    });
+
+    setSubtitles(finalSubs);
+    setVideoUrls(reorderedVideos);
+    setDraggedIndex(null);
+    setIsCardDraggable(false);
+  };
+
+  // Sincronizar e regenerar a voz de todas as cenas na ElevenLabs
+  const handleUpdateVoice = async () => {
+    setIsUpdatingVoice(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      const res = await fetch('/api/video/update-audio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+        },
+        body: JSON.stringify({
+          id: draftDbId || id,
+          subtitles: subtitles.map(s => ({ id: s.id, text: s.text }))
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Falha ao atualizar a voz.');
+      }
+
+      const result = await res.json();
+      if (result.success) {
+        setAudioUrl(result.audio_url);
+        setSubtitles(result.subtitles);
+        alert('Voz e tempos de sincronização atualizados com sucesso!');
+      }
+    } catch (err: any) {
+      alert('Erro ao atualizar voz: ' + err.message);
+    } finally {
+      setIsUpdatingVoice(false);
     }
   };
 
@@ -487,6 +573,16 @@ export default function EditorClient({ id }: EditorClientProps) {
 
           <div className="flex items-center gap-3">
             <button 
+              onClick={handleUpdateVoice}
+              disabled={isUpdatingVoice || subtitles.length === 0}
+              className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-amber-500/10 border border-amber-500/30 hover:border-amber-400 text-xs font-bold text-amber-400 hover:text-amber-300 rounded-xl transition-all shadow-[0_0_15px_rgba(245,158,11,0.05)] active:scale-95 disabled:opacity-50"
+              title="Regera a voz consolidada na ElevenLabs para todas as cenas com os textos atuais"
+            >
+              {isUpdatingVoice ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              <span>Atualizar Voz</span>
+            </button>
+
+            <button 
               onClick={handleSaveDraft}
               disabled={isSaving}
               className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-[#15233c]/35 border border-[#15233c]/80 text-xs font-bold text-slate-200 hover:text-white hover:bg-[#15233c] rounded-xl transition-all active:scale-95 disabled:opacity-50"
@@ -504,60 +600,90 @@ export default function EditorClient({ id }: EditorClientProps) {
             const isImage = /\.(jpg|jpeg|png|webp|gif)($|\?)/i.test(mediaUrl || '');
 
             return (
-              <div 
-                key={index} 
-                className="bg-[#060a13] border border-blue-500/80 shadow-[0_0_20px_rgba(59,130,246,0.12)] rounded-2xl p-5 flex gap-5 hover:shadow-[0_0_20px_rgba(59,130,246,0.18)] transition-all duration-300 relative group"
-              >
-                {/* Indicador Numérico da Cena */}
-                <div className="absolute top-4 left-4 h-6 w-6 rounded-full bg-slate-900/90 border border-slate-800 text-[10px] text-slate-400 font-bold flex items-center justify-center">
-                  {index + 1}
-                </div>
+              <React.Fragment key={scene.id || index}>
+                <div 
+                  draggable={isCardDraggable}
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={() => handleDropScene(index)}
+                  className={`bg-[#060a13] border border-blue-500/80 shadow-[0_0_20px_rgba(59,130,246,0.12)] rounded-2xl p-5 flex gap-5 hover:shadow-[0_0_20px_rgba(59,130,246,0.18)] transition-all duration-300 relative group transition-opacity ${
+                    draggedIndex === index ? 'opacity-40 border-dashed border-indigo-500' : ''
+                  }`}
+                >
+                  {/* Indicador Numérico da Cena e Drag Handle */}
+                  <div 
+                    onMouseEnter={() => setIsCardDraggable(true)}
+                    onMouseLeave={() => setIsCardDraggable(false)}
+                    className="absolute top-4 left-4 flex items-center gap-1 bg-slate-900/90 border border-slate-800 rounded-xl px-2 py-1 text-[10px] text-slate-400 font-bold cursor-grab active:cursor-grabbing hover:border-indigo-500/50 hover:text-white transition-all select-none"
+                    title="Arraste pelo grip para reordenar a cena"
+                  >
+                    <GripVertical className="h-3 w-3 text-slate-500" />
+                    <span>{index + 1}</span>
+                  </div>
 
-                {/* Bloco da Mídia (Esquerda do Card) */}
-                <div className="w-40 aspect-[9/16] rounded-xl overflow-hidden bg-slate-950 relative border border-slate-800 shrink-0 select-none shadow-inner">
-                  {mediaUrl ? (
-                    isImage ? (
-                      <img src={mediaUrl} className="w-full h-full object-cover" alt={`Cena ${index + 1}`} />
+                  {/* Bloco da Mídia (Esquerda do Card) */}
+                  <div className="w-40 aspect-[9/16] rounded-xl overflow-hidden bg-slate-950 relative border border-slate-800 shrink-0 select-none shadow-inner">
+                    {mediaUrl ? (
+                      isImage ? (
+                        <img src={mediaUrl} className="w-full h-full object-cover" alt={`Cena ${index + 1}`} />
+                      ) : (
+                        <video src={mediaUrl} className="w-full h-full object-cover" muted playsInline loop />
+                      )
                     ) : (
-                      <video src={mediaUrl} className="w-full h-full object-cover" muted playsInline loop />
-                    )
-                  ) : (
-                    <div className="w-full h-full flex flex-col justify-center items-center gap-1.5 text-slate-500">
-                      <ImageIcon className="h-6 w-6" />
-                      <span className="text-[10px] font-semibold">Sem Mídia</span>
+                      <div className="w-full h-full flex flex-col justify-center items-center gap-1.5 text-slate-500">
+                        <ImageIcon className="h-6 w-6" />
+                        <span className="text-[10px] font-semibold">Sem Mídia</span>
+                      </div>
+                    )}
+                    
+                    {/* Botão Substituir Mídia em hover */}
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-3xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <button 
+                        onClick={() => handleReplaceMediaClick(index)}
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold shadow-md shadow-indigo-600/20 transition-all active:scale-95 flex items-center gap-1"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Mudar Mídia
+                      </button>
                     </div>
-                  )}
-                  
-                  {/* Botão Substituir Mídia em hover */}
-                  <div className="absolute inset-0 bg-black/40 backdrop-blur-3xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <button 
-                      onClick={() => handleReplaceMediaClick(index)}
-                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold shadow-md shadow-indigo-600/20 transition-all active:scale-95 flex items-center gap-1"
-                    >
-                      <Plus className="h-3 w-3" />
-                      Mudar Mídia
-                    </button>
-                  </div>
-                </div>
-
-                {/* Conteúdo de Roteiro e Timestamps (Direita do Card) */}
-                <div className="flex-1 flex flex-col gap-3 justify-between">
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Legenda / Roteiro da Cena</span>
-                    <textarea 
-                      value={scene.text}
-                      onChange={(e) => handleTextChange(index, e.target.value)}
-                      className="w-full h-24 bg-slate-950/60 border border-slate-900 focus:border-blue-500/50 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 outline-none resize-none leading-relaxed focus:shadow-[0_0_15px_rgba(59,130,246,0.06)]"
-                      placeholder="Insira as falas da cena..."
-                    />
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold select-none border-t border-slate-900/60 pt-2.5">
-                    <span>⏱️ Duração: {scene && typeof scene.end === 'number' && typeof scene.start === 'number' && !isNaN(scene.end - scene.start) ? (scene.end - scene.start).toFixed(1) : '0.0'}s</span>
-                    <span>Intervalo: {scene && typeof scene.start === 'number' && !isNaN(scene.start) ? scene.start.toFixed(1) : '0.0'}s - {scene && typeof scene.end === 'number' && !isNaN(scene.end) ? scene.end.toFixed(1) : '0.0'}s</span>
+                  {/* Conteúdo de Roteiro e Timestamps (Direita do Card) */}
+                  <div className="flex-1 flex flex-col gap-3 justify-between">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Legenda / Roteiro da Cena</span>
+                      <textarea 
+                        value={scene.text}
+                        onChange={(e) => handleTextChange(index, e.target.value)}
+                        className="w-full h-24 bg-slate-950/60 border border-slate-900 focus:border-blue-500/50 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 outline-none resize-none leading-relaxed focus:shadow-[0_0_15px_rgba(59,130,246,0.06)]"
+                        placeholder="Insira as falas da cena..."
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold select-none border-t border-slate-900/60 pt-2.5">
+                      <span>⏱️ Duração: {scene && typeof scene.end === 'number' && typeof scene.start === 'number' && !isNaN(scene.end - scene.start) ? (scene.end - scene.start).toFixed(1) : '0.0'}s</span>
+                      <span>Intervalo: {scene && typeof scene.start === 'number' && !isNaN(scene.start) ? scene.start.toFixed(1) : '0.0'}s - {scene && typeof scene.end === 'number' && !isNaN(scene.end) ? scene.end.toFixed(1) : '0.0'}s</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+                {index < subtitles.length - 1 && (
+                  <div className="flex justify-center my-1 relative py-2 select-none group/trans-container">
+                    <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                      <div className="w-full border-t border-dashed border-slate-800/60 group-hover/trans-container:border-indigo-500/30 transition-colors"></div>
+                    </div>
+                    <div className="relative flex justify-center">
+                      <button 
+                        type="button" 
+                        onClick={() => alert(`Escolher transição entre cena ${index + 1} e ${index + 2} (Funcionalidade futura)`)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-900 text-[10px] font-bold text-slate-500 hover:text-indigo-400 shadow-md transition-all active:scale-95 group/trans-btn"
+                      >
+                        <Plus className="h-3 w-3 text-slate-500 group-hover/trans-btn:text-indigo-400 group-hover/trans-btn:rotate-90 transition-transform duration-300" />
+                        <span>Escolher Transição</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </React.Fragment>
             );
           })}
         </div>
