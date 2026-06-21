@@ -154,6 +154,11 @@ export default function EditorClient({ id }: EditorClientProps) {
   const [userUploads, setUserUploads] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Estados para Upload Local e Controle de Fila
+  const [localFiles, setLocalFiles] = useState<{ [index: number]: File }>({});
+  const [localUrls, setLocalUrls] = useState<string[]>([]);
+  const [isWaitingQueue, setIsWaitingQueue] = useState(false);
+
   // Carrega a sessão do usuário e o rascunho do projeto
   useEffect(() => {
     async function loadData() {
@@ -276,6 +281,20 @@ export default function EditorClient({ id }: EditorClientProps) {
     loadData();
   }, [id, router]);
 
+  // Cleanup object URLs to prevent memory leaks
+  useEffect(() => {
+    const urlsToRevoke = [...localUrls];
+    return () => {
+      urlsToRevoke.forEach(url => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          console.error('Error revoking URL:', e);
+        }
+      });
+    };
+  }, [localUrls]);
+
   // Carrega buscas iniciais do Pexels
   useEffect(() => {
     if (mediaPanelOpen && mediaTab === 'pexels' && pexelsResults.length === 0) {
@@ -348,49 +367,21 @@ export default function EditorClient({ id }: EditorClientProps) {
     }
   };
 
-  // Fazer o upload do arquivo para o S3 e salvar no banco de dados do Supabase
-  const uploadFile = async (file: File) => {
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
+  // Fazer o preview local do arquivo e salvar o File correspondente
+  const uploadFile = (file: File) => {
+    if (activeSceneIndex === null) return;
+    
+    // Gera a URL local via URL.createObjectURL para preview instantâneo na tela com custo zero
+    const localUrl = URL.createObjectURL(file);
+    
+    // Armazena o objeto File em nosso mapeamento de arquivos locais
+    setLocalFiles(prev => ({ ...prev, [activeSceneIndex]: file }));
+    
+    // Registra a URL local para limpeza posterior
+    setLocalUrls(prev => [...prev, localUrl]);
 
-      const res = await fetch('/api/upload/s3', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!res.ok) throw new Error('Falha no upload do arquivo');
-      const data = await res.json();
-      const fileUrl = data.url;
-
-      // Salva URL no Supabase user_uploads
-      if (userId) {
-        try {
-          const { error } = await supabase
-            .from('user_uploads')
-            .insert([{ user_id: userId, url: fileUrl }]);
-          if (error) throw error;
-        } catch {
-          // Fallback para localStorage
-          const local = localStorage.getItem(`recent_uploads_${userId}`);
-          const list = local ? JSON.parse(local) : [];
-          const updatedList = [fileUrl, ...list].slice(0, 15);
-          localStorage.setItem(`recent_uploads_${userId}`, JSON.stringify(updatedList));
-        }
-
-        // Adiciona à lista local imediatamente
-        setUserUploads(prev => [fileUrl, ...prev]);
-        
-        // Aplica o arquivo na cena correspondente
-        selectMediaForActiveScene(fileUrl);
-      }
-
-    } catch (err: any) {
-      alert('Falha ao enviar arquivo: ' + err.message);
-    } finally {
-      setUploading(false);
-    }
+    // Aplica o preview local na cena correspondente
+    selectMediaForActiveScene(localUrl);
   };
 
   // Para dar scroll suave até o card correspondente da cena
@@ -515,6 +506,106 @@ export default function EditorClient({ id }: EditorClientProps) {
     }
   };
 
+  // Função auxiliar para chamar o endpoint de renderização
+  const dispatchRender = async (tempPaths: string[], finalUrls: string[]): Promise<boolean> => {
+    const res = await fetch('/api/video/render', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        compositionId: 'Reels',
+        inputProps: {
+          audio_url: audioUrl,
+          video_urls: finalUrls,
+          subtitles: subtitles
+        },
+        tempFilePaths: tempPaths,
+        draftId: draftDbId || id
+      })
+    });
+
+    if (res.status === 429) {
+      setIsWaitingQueue(true);
+      return false;
+    }
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || 'O servidor de renderização falhou ao iniciar.');
+    }
+
+    setIsWaitingQueue(false);
+    const renderData = await res.json();
+    
+    const { renderId, bucketName } = renderData;
+
+    // 2. Decrementar 1 crédito do usuário via RPC atômica
+    if (userId) {
+      await supabase.rpc('decrement_profile_credits', { p_user_id: userId, p_amount: 1 });
+      setCredits(prev => Math.max(0, prev - 1));
+    }
+
+    // 3. Atualizar status na tabela correspondente
+    await supabase
+      .from('video_drafts')
+      .update({ status: 'rendering' })
+      .eq('id', draftDbId || id);
+    
+    await supabase
+      .from('video_jobs')
+      .update({ status: 'rendering' })
+      .eq('id', id);
+
+    // 4. Iniciar consulta (polling) para acompanhar progresso de renderização
+    const interval = setInterval(async () => {
+      try {
+        const progressRes = await fetch(`/api/video/render/progress?renderId=${renderId}&bucketName=${bucketName}`);
+        if (!progressRes.ok) return;
+
+        const progressData = await progressRes.json();
+
+        if (progressData.status === 'done') {
+          clearInterval(interval);
+          setIsRendering(false);
+          setRenderProgress(100);
+
+          const finalUrl = progressData.videoUrl;
+
+          // Salvar link finalizado
+          await supabase
+            .from('video_jobs')
+            .update({ status: 'ready', video_url: finalUrl })
+            .eq('id', id);
+
+          alert('Vídeo renderizado com sucesso!');
+          
+          // Revogar URLs de blob locais após renderização bem sucedida
+          localUrls.forEach(url => URL.revokeObjectURL(url));
+          setLocalFiles({});
+          setLocalUrls([]);
+
+          router.push('/history');
+
+        } else if (progressData.status === 'error') {
+          clearInterval(interval);
+          setIsRendering(false);
+          alert(`A renderização falhou na AWS: ${progressData.error}`);
+          
+          await supabase
+            .from('video_jobs')
+            .update({ status: 'failed' })
+            .eq('id', id);
+
+        } else if (progressData.status === 'rendering') {
+          setRenderProgress(progressData.progress || 0);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }, 3500);
+
+    return true;
+  };
+
   // Disparar Renderização Final na AWS Lambda
   const handleRenderVideo = async () => {
     if (credits <= 0) {
@@ -526,86 +617,59 @@ export default function EditorClient({ id }: EditorClientProps) {
     setRenderProgress(0);
 
     try {
-      // 1. Iniciar renderização via AWS Lambda chamando nossa API Route
-      const res = await fetch('/api/video/render', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          compositionId: 'Reels',
-          inputProps: {
-            audio_url: audioUrl,
-            video_urls: videoUrls,
-            subtitles: subtitles
+      // Fazer o upload das mídias locais para o Supabase Storage temporário
+      const updatedVideoUrls = [...videoUrls];
+      const tempFilePaths: string[] = [];
+
+      for (const [indexStr, file] of Object.entries(localFiles)) {
+        const sceneIndex = parseInt(indexStr, 10);
+        if (videoUrls[sceneIndex]?.startsWith('blob:')) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${userId || 'anon'}/${Date.now()}-${sceneIndex}.${fileExt}`;
+          
+          const { data, error } = await supabase.storage
+            .from('editor_temp_uploads')
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: true
+            });
+
+          if (error) {
+            throw new Error(`Falha no upload do arquivo temporário: ${error.message}`);
           }
-        })
-      });
 
-      if (!res.ok) throw new Error('O servidor de renderização falhou ao iniciar.');
-      const renderData = await res.json();
-      
-      const { renderId, bucketName } = renderData;
+          const { data: { publicUrl } } = supabase.storage
+            .from('editor_temp_uploads')
+            .getPublicUrl(fileName);
 
-      // 2. Decrementar 1 crédito do usuário via RPC atômica
-      if (userId) {
-        await supabase.rpc('decrement_profile_credits', { p_user_id: userId, p_amount: 1 });
-        setCredits(prev => Math.max(0, prev - 1));
+          updatedVideoUrls[sceneIndex] = publicUrl;
+          tempFilePaths.push(fileName);
+        }
       }
 
-      // 3. Atualizar status na tabela correspondente
-      await supabase
-        .from('video_drafts')
-        .update({ status: 'rendering' })
-        .eq('id', draftDbId || id);
+      // Tenta submeter a renderização
+      const success = await dispatchRender(tempFilePaths, updatedVideoUrls);
       
-      await supabase
-        .from('video_jobs')
-        .update({ status: 'rendering' })
-        .eq('id', id);
-
-      // 4. Iniciar consulta (polling) para acompanhar progresso de renderização
-      const interval = setInterval(async () => {
-        try {
-          const progressRes = await fetch(`/api/video/render/progress?renderId=${renderId}&bucketName=${bucketName}`);
-          if (!progressRes.ok) return;
-
-          const progressData = await progressRes.json();
-
-          if (progressData.status === 'done') {
-            clearInterval(interval);
+      if (!success) {
+        // Se a fila estiver cheia, agendamos novas tentativas automáticas a cada 5 segundos
+        const pollInterval = setInterval(async () => {
+          try {
+            const retrySuccess = await dispatchRender(tempFilePaths, updatedVideoUrls);
+            if (retrySuccess) {
+              clearInterval(pollInterval);
+            }
+          } catch (retryErr: any) {
+            clearInterval(pollInterval);
             setIsRendering(false);
-            setRenderProgress(100);
-
-            const finalUrl = progressData.videoUrl;
-
-            // Salvar link finalizado
-            await supabase
-              .from('video_jobs')
-              .update({ status: 'ready', video_url: finalUrl })
-              .eq('id', id);
-
-            alert('Vídeo renderizado com sucesso!');
-            router.push('/history');
-
-          } else if (progressData.status === 'error') {
-            clearInterval(interval);
-            setIsRendering(false);
-            alert(`A renderização falhou na AWS: ${progressData.error}`);
-            
-            await supabase
-              .from('video_jobs')
-              .update({ status: 'failed' })
-              .eq('id', id);
-
-          } else if (progressData.status === 'rendering') {
-            setRenderProgress(progressData.progress || 0);
+            setIsWaitingQueue(false);
+            alert('Erro ao tentar renderizar na fila: ' + retryErr.message);
           }
-        } catch (err) {
-          console.error(err);
-        }
-      }, 3500);
+        }, 5000);
+      }
 
     } catch (err: any) {
       setIsRendering(false);
+      setIsWaitingQueue(false);
       alert('Erro ao processar renderização: ' + err.message);
     }
   };
@@ -782,10 +846,10 @@ export default function EditorClient({ id }: EditorClientProps) {
             <div className="absolute inset-0 bg-black/90 backdrop-blur-sm z-50 flex flex-col justify-center items-center gap-3.5 p-4 text-center select-none">
               <Loader2 className="h-8 w-8 text-cyan-400 animate-spin" />
               <span className="text-xs font-semibold text-slate-200 leading-normal animate-pulse">
-                Renderizando Vídeo Final... {renderProgress > 0 ? `(${renderProgress}%)` : ''}
+                {isWaitingQueue ? 'Fila cheia. Aguardando vaga para iniciar...' : `Renderizando Vídeo Final... ${renderProgress > 0 ? `(${renderProgress}%)` : ''}`}
               </span>
               <span className="text-[10px] text-slate-500">
-                Isso pode levar até 2 minutos na AWS Lambda.
+                {isWaitingQueue ? 'O processo iniciará automaticamente a cada 5 segundos.' : 'Isso pode levar até 2 minutos na AWS Lambda.'}
               </span>
             </div>
           )}
@@ -800,7 +864,7 @@ export default function EditorClient({ id }: EditorClientProps) {
           >
             <span className="text-sm tracking-wide flex items-center gap-1.5">
               <Rocket className="h-4 w-4" />
-              Renderizar Vídeo Final HD
+              {isWaitingQueue ? 'Fila cheia, aguardando vaga...' : (isRendering ? 'Processando...' : 'Renderizar Vídeo Final HD')}
             </span>
             <span className="text-[10px] text-white/70 font-semibold normal-case">1 crédito será consumido</span>
           </button>
