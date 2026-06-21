@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import {
   Play,
@@ -15,7 +15,9 @@ import {
   Volume2,
   VolumeX,
   X,
-  Sparkles
+  Sparkles,
+  MoreVertical,
+  Trash2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -52,6 +54,12 @@ export default function HistoryPage() {
   const [modalPlaying, setModalPlaying] = useState(false);
   const [modalMuted, setModalMuted] = useState(false);
   const modalVideoRef = useRef<HTMLVideoElement>(null);
+
+  // Estados do menu kebab e exclusão
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<VideoJob | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Detectar ambiente de desenvolvimento
   useEffect(() => {
@@ -147,6 +155,32 @@ export default function HistoryPage() {
       window.open(videoUrl, '_blank');
     }
   };
+
+  // Função de exclusão
+  const handleDeleteJob = useCallback(async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/video/delete?id=${deleteTarget.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Erro desconhecido');
+      setVideos((prev) => prev.filter((v) => v.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err: any) {
+      setDeleteError(err.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deleteTarget]);
+
+  // Fechar menu ao clicar fora
+  useEffect(() => {
+    if (!openMenuId) return;
+    const handler = () => setOpenMenuId(null);
+    window.addEventListener('click', handler);
+    return () => window.removeEventListener('click', handler);
+  }, [openMenuId]);
 
   // Funções do Modal
   const openVideoModal = (video: VideoJob) => {
@@ -405,23 +439,63 @@ export default function HistoryPage() {
                 )}
 
                 {/* Tags de status no topo do Card */}
-                <div className="p-4 z-20 flex justify-between items-start pointer-events-none">
-                  {isCompleted ? (
-                    <span className="text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 rounded-lg backdrop-blur-sm">
-                      Pronto
-                    </span>
-                  ) : isFailed ? (
-                    <span className="text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 bg-red-500/20 border border-red-500/30 text-red-400 rounded-lg backdrop-blur-sm">
-                      Erro
-                    </span>
-                  ) : isDraft ? (
-                    <span className="text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 bg-amber-500/25 border border-amber-500/30 text-amber-400 rounded-lg backdrop-blur-sm">
-                      Rascunho
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 rounded-lg backdrop-blur-sm animate-pulse">
-                      Gerando
-                    </span>
+                <div className="p-4 z-20 flex justify-between items-start">
+                  {/* Badge de status */}
+                  <div className="pointer-events-none">
+                    {isCompleted ? (
+                      <span className="text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 rounded-lg backdrop-blur-sm">
+                        Pronto
+                      </span>
+                    ) : isFailed ? (
+                      <span className="text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 bg-red-500/20 border border-red-500/30 text-red-400 rounded-lg backdrop-blur-sm">
+                        Erro
+                      </span>
+                    ) : isDraft ? (
+                      <span className="text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 bg-amber-500/25 border border-amber-500/30 text-amber-400 rounded-lg backdrop-blur-sm">
+                        Rascunho
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 rounded-lg backdrop-blur-sm animate-pulse">
+                        Gerando
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Kebab menu — disponível para rascunhos, falhos e concluídos */}
+                  {(isDraft || isFailed || isCompleted) && (
+                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        id={`menu-btn-${video.id}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === video.id ? null : video.id);
+                        }}
+                        className="h-7 w-7 rounded-lg bg-black/40 border border-white/10 hover:bg-white/10 hover:border-white/20 text-slate-400 hover:text-white flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
+                        title="Mais opções"
+                      >
+                        <MoreVertical className="h-3.5 w-3.5" />
+                      </button>
+
+                      {openMenuId === video.id && (
+                        <div
+                          className="absolute right-0 top-9 w-44 rounded-xl bg-slate-900/95 border border-white/10 shadow-2xl backdrop-blur-md overflow-hidden z-50"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(null);
+                              setDeleteTarget(video);
+                              setDeleteError(null);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors duration-150"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                            Excluir projeto
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -533,6 +607,67 @@ export default function HistoryPage() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ MODAL DE CONFIRMAÇÃO DE EXCLUSÃO ============ */}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => { if (!isDeleting) { setDeleteTarget(null); setDeleteError(null); } }}
+        >
+          <div
+            className="relative w-full max-w-sm bg-slate-900 border border-white/10 rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Ícone */}
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-500/10 border border-red-500/20 mx-auto">
+              <Trash2 className="h-5 w-5 text-red-400" />
+            </div>
+
+            {/* Texto */}
+            <div className="text-center space-y-1.5">
+              <h3 className="text-base font-bold text-white">Excluir projeto?</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Esta ação é permanente. O rascunho e todos os dados associados serão removidos e não poderão ser recuperados.
+              </p>
+            </div>
+
+            {/* Prompt preview */}
+            {deleteTarget.prompt_input && (
+              <p className="text-[10px] text-slate-500 bg-slate-800/60 border border-white/5 rounded-xl px-3 py-2 line-clamp-2 leading-relaxed italic">
+                &ldquo;{deleteTarget.prompt_input}&rdquo;
+              </p>
+            )}
+
+            {/* Erro */}
+            {deleteError && (
+              <p className="text-xs text-red-400 text-center bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{deleteError}</p>
+            )}
+
+            {/* Botões */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
+                disabled={isDeleting}
+                className="flex-1 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-semibold py-2.5 transition-all duration-200 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteJob}
+                disabled={isDeleting}
+                className="flex-1 rounded-xl bg-red-600 hover:bg-red-500 active:scale-95 text-white text-xs font-bold py-2.5 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-red-500/20"
+              >
+                {isDeleting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+                {isDeleting ? 'Excluindo...' : 'Sim, excluir'}
+              </button>
             </div>
           </div>
         </div>
