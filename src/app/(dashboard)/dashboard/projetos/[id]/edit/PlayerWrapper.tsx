@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize } from 'lucide-react';
 import { SubtitleItem } from '@/video/types';
 
 interface PlayerWrapperProps {
@@ -17,11 +17,14 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const currentTimeRef = useRef(0);
   const prevActiveVideoIndexRef = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [audioDuration, setAudioDuration] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Normalização das legendas
   const normalizedSubtitles = (subtitles || []).map((sub, index) => {
@@ -91,6 +94,110 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
       }
     });
   }, [audioUrl]);
+
+  // Atalho da Barra de Espaço para Play/Pause
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        const active = document.activeElement;
+        const isInput = active && (
+          active.tagName === 'INPUT' || 
+          active.tagName === 'TEXTAREA' || 
+          active.hasAttribute('contenteditable')
+        );
+        
+        if (!isInput) {
+          e.preventDefault();
+          togglePlay();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isPlaying, activeVideoIndex]);
+
+  // Listener para mudança de tela cheia
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch((err) => {
+        console.error(`Erro ao ativar tela cheia: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  const syncVideoSeek = (time: number) => {
+    const activeSubIndex = normalizedSubtitles.findIndex(
+      (sub) => time >= sub.start && time <= sub.end
+    );
+    let activeIdx = 0;
+    let timeInSub = time;
+    if (activeSubIndex !== -1) {
+      activeIdx = activeSubIndex % videoUrls.length;
+      timeInSub = time - normalizedSubtitles[activeSubIndex].start;
+    } else {
+      const clipDuration = totalDuration / videoUrls.length;
+      activeIdx = Math.min(Math.max(0, Math.floor(time / clipDuration)), videoUrls.length - 1);
+      timeInSub = time % clipDuration;
+    }
+
+    for (let i = 0; i < videoUrls.length; i++) {
+      const video = videoRefs.current[i];
+      if (video) {
+        if (i === activeIdx) {
+          video.currentTime = timeInSub;
+        } else {
+          video.currentTime = 0;
+        }
+      }
+    }
+  };
+
+  const seekToTime = (clientX: number) => {
+    if (!progressBarRef.current || !totalDuration) return;
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const clickX = clientX - rect.left;
+    const percentage = Math.min(Math.max(0, clickX / rect.width), 1);
+    const newTime = percentage * totalDuration;
+    
+    currentTimeRef.current = newTime;
+    setCurrentTime(newTime);
+    
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime;
+    }
+    
+    syncVideoSeek(newTime);
+  };
+
+  const handleProgressMouseDown = (e: React.MouseEvent) => {
+    seekToTime(e.clientX);
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      seekToTime(moveEvent.clientX);
+    };
+    
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   // Master update loop synchronized with the audio tag or running on requestAnimationFrame
   useEffect(() => {
@@ -186,7 +293,7 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
   };
 
   return (
-    <div className="w-full h-full relative flex flex-col justify-end group/player bg-black rounded-[1.25rem] overflow-hidden">
+    <div ref={containerRef} className="w-full h-full relative flex flex-col justify-end group/player bg-black rounded-[1.25rem] overflow-hidden">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&family=Poppins:wght@800;900&display=swap');
         
@@ -197,6 +304,20 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
         @keyframes previewKenBurns {
           from { transform: scale(1.0); }
           to { transform: scale(1.12); }
+        }
+
+        /* Estilos para manter proporção 9:16 em tela cheia */
+        .group\/player:fullscreen {
+          width: auto !important;
+          height: 100vh !important;
+          max-height: 100vh !important;
+          aspect-ratio: 9/16 !important;
+          margin: auto !important;
+          border-radius: 0 !important;
+          background-color: black !important;
+        }
+        ::backdrop {
+          background-color: black !important;
         }
       `}</style>
 
@@ -338,12 +459,19 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
         );
       })()}
 
-      {/* Barra de Progresso */}
-      <div className="absolute bottom-0 inset-x-0 h-1 bg-white/15 z-30 select-none">
+      {/* Barra de Progresso Interativa */}
+      <div 
+        ref={progressBarRef}
+        onMouseDown={handleProgressMouseDown}
+        className="absolute bottom-0 inset-x-0 h-2 bg-white/15 z-30 cursor-pointer group/slider select-none"
+      >
         <div 
-          className="h-full bg-gradient-to-r from-blue-500 to-indigo-500" 
+          className="h-full bg-gradient-to-r from-blue-500 to-[#7c3aed] relative" 
           style={{ width: `${totalDuration ? (currentTime / totalDuration) * 100 : 0}%` }}
-        />
+        >
+          {/* Handle flutuante no hover */}
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-lg opacity-0 group-hover/slider:opacity-100 transition-opacity" />
+        </div>
       </div>
 
       {/* Controles do Player */}
@@ -359,12 +487,22 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
           {Math.floor(currentTime / 60)}:{String(Math.floor(currentTime % 60)).padStart(2, '0')} / {Math.floor(totalDuration / 60)}:{String(Math.floor(totalDuration % 60)).padStart(2, '0')}
         </span>
 
-        <button 
-          onClick={toggleMute}
-          className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 cursor-pointer"
-        >
-          {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button 
+            onClick={toggleMute}
+            className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 cursor-pointer"
+          >
+            {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+          </button>
+          
+          <button 
+            onClick={toggleFullscreen}
+            className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
+          >
+            {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
+          </button>
+        </div>
       </div>
     </div>
   );
