@@ -331,6 +331,14 @@ export default function EditorClient({ id }: EditorClientProps) {
     }
   };
 
+  // Para dar scroll suave até o card correspondente da cena
+  const handleSceneClick = (index: number) => {
+    const el = document.getElementById(`scene-card-${index}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
   // Funções de Reordenação (Drag and Drop)
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
@@ -555,8 +563,10 @@ export default function EditorClient({ id }: EditorClientProps) {
   }
 
   return (
-    <div className="flex h-[calc(100vh-100px)] overflow-hidden gap-8 relative select-none">
-      {/* Esquerda: Linha do Tempo e Controle de Cenas */}
+    <div className="flex flex-col h-[calc(100vh-100px)] overflow-hidden gap-4 relative select-none">
+      {/* Container Superior (Editor Principal + Player) */}
+      <div className="flex flex-1 overflow-hidden gap-8">
+        {/* Esquerda: Linha do Tempo e Controle de Cenas */}
       <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-5">
         <div className="flex items-center justify-between border-b border-[#15233c]/20 pb-4">
           <div className="flex items-center gap-3">
@@ -606,6 +616,7 @@ export default function EditorClient({ id }: EditorClientProps) {
             return (
               <React.Fragment key={scene.id || index}>
                 <div 
+                  id={`scene-card-${index}`}
                   draggable={isCardDraggable}
                   onDragStart={(e) => handleDragStart(e, index)}
                   onDragOver={(e) => handleDragOver(e, index)}
@@ -739,7 +750,72 @@ export default function EditorClient({ id }: EditorClientProps) {
         </div>
       </div>
 
-      {/* Painel Lateral Retrátil de Mídias (Estilo Canva Interno) */}
+      {/* Mini Timeline Inferior (Estilo CapCut/Canva) */}
+      <div className="w-full bg-[#050914]/90 border-t border-[#15233c] py-4 px-6 flex flex-col gap-2 shrink-0 select-none backdrop-blur-md">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider">Timeline de Cenas</span>
+          <span className="text-[9px] text-slate-500">Arraste para reordenar • Clique para navegar</span>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+          {subtitles.map((scene, index) => {
+            const mediaUrl = videoUrls[index];
+            const isImage = /\.(jpg|jpeg|png|webp|gif)($|\?)/i.test(mediaUrl || '');
+            const duration = scene && typeof scene.end === 'number' && typeof scene.start === 'number' ? scene.end - scene.start : 3;
+
+            return (
+              <div
+                key={`mini-${scene.id || index}`}
+                draggable
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDrop={() => handleDropScene(index)}
+                onClick={() => handleSceneClick(index)}
+                className={`relative w-28 aspect-[9/16] shrink-0 rounded-xl overflow-hidden border bg-slate-950 cursor-pointer transition-all duration-200 group/mini hover:scale-102 active:scale-98 ${
+                  draggedIndex === index 
+                    ? 'opacity-40 border-dashed border-indigo-500' 
+                    : 'border-blue-500/20 hover:border-blue-500/50 shadow-md shadow-blue-500/2'
+                }`}
+              >
+                {/* Miniatura de Mídia */}
+                {mediaUrl ? (
+                  isImage ? (
+                    <img src={mediaUrl} className="w-full h-full object-cover" alt="" />
+                  ) : (
+                    <video src={mediaUrl} className="w-full h-full object-cover" muted playsInline />
+                  )
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-700">
+                    <ImageIcon className="h-5 w-5" />
+                  </div>
+                )}
+
+                {/* Overlay de gradiente */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/40 z-10" />
+
+                {/* Badges superiores */}
+                <div className="absolute top-1.5 left-1.5 z-20 flex items-center justify-center h-4.5 w-4.5 rounded bg-slate-900/90 border border-slate-800 text-[8px] text-slate-400 font-bold">
+                  {index + 1}
+                </div>
+
+                {/* Duração no rodapé */}
+                <div className="absolute bottom-1.5 right-1.5 z-20 text-[8px] text-white/90 bg-black/60 border border-white/5 rounded px-1 py-0.5 font-bold">
+                  {duration.toFixed(1)}s
+                </div>
+
+                {/* Texto da legenda ao passar o mouse */}
+                <div className="absolute inset-0 z-20 flex items-center justify-center p-2 opacity-0 group-hover/mini:opacity-100 bg-black/75 backdrop-blur-3xs transition-opacity select-none text-center">
+                  <p className="text-[8px] text-slate-200 font-medium line-clamp-4 leading-normal">
+                    {scene.text || 'Sem texto'}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+
+    {/* Painel Lateral Retrátil de Mídias (Estilo Canva Interno) */}
       {mediaPanelOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
           {/* Backdrop */}
