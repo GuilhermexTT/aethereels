@@ -1017,7 +1017,7 @@ export default function EditorClient({ id }: EditorClientProps) {
             </button>
           </div>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+        <div className="flex gap-4 overflow-x-auto pt-3 pb-3 px-1.5 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
           {subtitles.map((scene, index) => {
             const mediaUrl = videoUrls[index];
             const isImage = /\.(jpg|jpeg|png|webp|gif)($|\?)/i.test(mediaUrl || '');
@@ -1035,7 +1035,7 @@ export default function EditorClient({ id }: EditorClientProps) {
                     onClick={() => handleSceneClick(index)}
                     className={`relative w-28 aspect-[9/16] shrink-0 rounded-xl overflow-hidden border bg-slate-950 cursor-pointer transition-all duration-350 group/mini ${
                       isActivePlaying
-                        ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.65)] scale-[1.03] z-10'
+                        ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.85)] scale-[1.03] z-10'
                         : (draggedIndex === index 
                             ? 'opacity-40 border-dashed border-indigo-500' 
                             : 'border-blue-500/20 hover:border-blue-500/50 hover:scale-[1.02] active:scale-98 shadow-md shadow-blue-500/2')
