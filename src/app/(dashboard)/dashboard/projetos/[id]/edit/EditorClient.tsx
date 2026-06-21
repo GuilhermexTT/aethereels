@@ -749,8 +749,9 @@ export default function EditorClient({ id }: EditorClientProps) {
           </div>
         </div>
       </div>
+    </div>
 
-      {/* Mini Timeline Inferior (Estilo CapCut/Canva) */}
+    {/* Mini Timeline Inferior (Estilo CapCut/Canva) */}
       <div className="w-full bg-[#050914]/90 border-t border-[#15233c] py-4 px-6 flex flex-col gap-2 shrink-0 select-none backdrop-blur-md">
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider">Timeline de Cenas</span>
@@ -813,9 +814,8 @@ export default function EditorClient({ id }: EditorClientProps) {
           })}
         </div>
       </div>
-    </div>
 
-    {/* Painel Lateral Retrátil de Mídias (Estilo Canva Interno) */}
+      {/* Painel Lateral Retrátil de Mídias (Estilo Canva Interno) */}
       {mediaPanelOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
           {/* Backdrop */}
