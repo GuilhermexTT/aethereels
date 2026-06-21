@@ -42,6 +42,67 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+function PexelsMediaCard({ 
+  item, 
+  onSelect 
+}: { 
+  item: any; 
+  onSelect: (url: string) => void; 
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      if (isHovered) {
+        videoRef.current.currentTime = 0;
+        videoRef.current.play().catch(() => {});
+      } else {
+        videoRef.current.pause();
+      }
+    }
+  }, [isHovered]);
+
+  return (
+    <div 
+      onClick={() => onSelect(item.url)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="aspect-[9/16] rounded-lg overflow-hidden bg-slate-950 border border-slate-900/60 relative cursor-pointer group/item hover:border-blue-500/50 transition-all select-none shadow-md"
+    >
+      {/* Imagem de Preview */}
+      <img 
+        src={item.image} 
+        className={`w-full h-full object-cover absolute inset-0 transition-opacity duration-300 ${
+          isHovered ? 'opacity-0' : 'opacity-100'
+        }`} 
+        alt="" 
+      />
+      
+      {/* Vídeo curto que dá play no hover */}
+      {item.url && (
+        <video 
+          ref={videoRef}
+          src={item.url} 
+          muted 
+          playsInline 
+          loop 
+          className={`w-full h-full object-cover absolute inset-0 transition-opacity duration-300 ${
+            isHovered ? 'opacity-100' : 'opacity-0'
+          }`} 
+        />
+      )}
+
+      {/* Overlay do Autor */}
+      <div className="absolute inset-0 bg-black/30 group-hover/item:bg-black/10 transition-colors flex items-end p-2 select-none z-10">
+        <span className="text-[8px] text-white/80 font-bold truncate max-w-full bg-slate-950/70 px-1.5 py-0.5 rounded border border-white/5">
+          @{item.user?.name || 'Pexels'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 interface EditorClientProps {
   id: string;
 }
@@ -226,12 +287,12 @@ export default function EditorClient({ id }: EditorClientProps) {
   const searchPexels = async () => {
     setPexelsLoading(true);
     try {
-      const res = await fetch(`/api/pexels/search?query=${encodeURIComponent(pexelsQuery)}&type=video`);
+      const res = await fetch(`/api/media/search?query=${encodeURIComponent(pexelsQuery)}`);
       if (!res.ok) throw new Error();
       const data = await res.json();
       setPexelsResults(data.videos || []);
     } catch {
-      console.error('Erro ao buscar no Pexels. Usando mocks.');
+      console.error('Erro ao buscar no Pexels.');
     } finally {
       setPexelsLoading(false);
     }
@@ -924,16 +985,11 @@ export default function EditorClient({ id }: EditorClientProps) {
                   ) : (
                     <div className="grid grid-cols-2 gap-3 pb-4">
                       {pexelsResults.map((item) => (
-                        <div 
-                          key={item.id}
-                          onClick={() => selectMediaForActiveScene(item.url)}
-                          className="aspect-[9/16] rounded-lg overflow-hidden bg-slate-950 border border-slate-900/60 relative cursor-pointer group/item hover:border-blue-500/50 transition-all select-none shadow-md"
-                        >
-                          <img src={item.image} className="w-full h-full object-cover" alt="" />
-                          <div className="absolute inset-0 bg-black/30 group-hover/item:bg-black/10 transition-colors flex items-end p-2 select-none">
-                            <span className="text-[8px] text-white/80 font-bold truncate max-w-full bg-slate-950/70 px-1.5 py-0.5 rounded border border-white/5">@{item.user.name}</span>
-                          </div>
-                        </div>
+                        <PexelsMediaCard 
+                          key={item.id} 
+                          item={item} 
+                          onSelect={selectMediaForActiveScene} 
+                        />
                       ))}
                     </div>
                   )}
