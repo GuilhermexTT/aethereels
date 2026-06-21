@@ -293,7 +293,10 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
   };
 
   return (
-    <div ref={containerRef} className="w-full h-full relative flex flex-col justify-end group/player bg-black rounded-[1.25rem] overflow-hidden">
+    <div 
+      ref={containerRef} 
+      className="w-full h-full bg-black flex items-center justify-center relative rounded-[1.25rem] overflow-hidden group/player"
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&family=Poppins:wght@800;900&display=swap');
         
@@ -308,11 +311,6 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
 
         /* Estilos para manter proporção 9:16 em tela cheia */
         .group\/player:fullscreen {
-          width: auto !important;
-          height: 100vh !important;
-          max-height: 100vh !important;
-          aspect-ratio: 9/16 !important;
-          margin: auto !important;
           border-radius: 0 !important;
           background-color: black !important;
         }
@@ -321,187 +319,190 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
         }
       `}</style>
 
-      {/* Renderização das cenas de vídeos em paralelo */}
-      {videoUrls.map((url, idx) => {
-        const videoSrc = typeof url === 'object' && url !== null 
-          ? String((url as any).url || (url as any).link || '') 
-          : String(url);
-        
-        const isActive = idx === activeVideoIndex;
-        
-        const activeSubIndex = normalizedSubtitles.findIndex(sub => currentTime >= sub.start && currentTime <= sub.end);
-        const activeSub = activeSubIndex !== -1 ? normalizedSubtitles[activeSubIndex] : null;
-        const clipDuration = activeSub ? (activeSub.end - activeSub.start) : 3;
+      {/* Viewport 9:16 Responsivo / Auto-ajustável */}
+      <div className="w-full h-full aspect-[9/16] relative flex flex-col justify-end max-h-full">
+        {/* Renderização das cenas de vídeos em paralelo */}
+        {videoUrls.map((url, idx) => {
+          const videoSrc = typeof url === 'object' && url !== null 
+            ? String((url as any).url || (url as any).link || '') 
+            : String(url);
+          
+          const isActive = idx === activeVideoIndex;
+          
+          const activeSubIndex = normalizedSubtitles.findIndex(sub => currentTime >= sub.start && currentTime <= sub.end);
+          const activeSub = activeSubIndex !== -1 ? normalizedSubtitles[activeSubIndex] : null;
+          const clipDuration = activeSub ? (activeSub.end - activeSub.start) : 3;
 
-        return (
-          <video
-            key={idx}
-            ref={(el) => { videoRefs.current[idx] = el; }}
-            src={videoSrc}
-            preload="auto"
-            style={{
-              opacity: isActive ? 1 : 0,
-              pointerEvents: isActive ? 'auto' : 'none',
-              animation: isActive
-                ? `previewFadeIn 0.5s ease-out forwards, previewKenBurns ${clipDuration}s linear forwards, previewDummy-${activeSubIndex} 0s`
-                : 'none',
-            }}
-            loop
-            playsInline
-            muted={true}
-            className="absolute inset-0 w-full h-full object-cover bg-black"
-          />
-        );
-      })}
-
-      {/* Áudio de fundo sincronizado */}
-      {audioUrl && (
-        <audio
-          ref={audioRef}
-          src={audioUrl}
-          onTimeUpdate={handleTimeUpdate}
-          onLoadedMetadata={(e) => setAudioDuration(e.currentTarget.duration)}
-          onEnded={() => {
-            setIsPlaying(false);
-            setCurrentTime(0);
-          }}
-        />
-      )}
-
-      {/* Legendas Dinâmicas */}
-      {(() => {
-        const activeSubtitle = normalizedSubtitles.find(
-          (sub) => currentTime >= sub.start && currentTime <= sub.end
-        );
-        if (!activeSubtitle || !activeSubtitle.text.trim()) return null;
-
-        const words = activeSubtitle.text.trim().split(/\s+/);
-        const totalWords = words.length;
-        const subtitleDuration = activeSubtitle.end - activeSubtitle.start;
-        const elapsed = currentTime - activeSubtitle.start;
-
-        const activeWordIndex = totalWords > 1 && subtitleDuration > 0
-          ? Math.min(
-              Math.floor((elapsed / subtitleDuration) * totalWords),
-              totalWords - 1
-            )
-          : 0;
-
-        return (
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'flex-end',
-              paddingBottom: '85px',
-              paddingLeft: '20px',
-              paddingRight: '20px',
-              pointerEvents: 'none',
-              zIndex: 30,
-            }}
-          >
-            <h1
+          return (
+            <video
+              key={idx}
+              ref={(el) => { videoRefs.current[idx] = el; }}
+              src={videoSrc}
+              preload="auto"
               style={{
-                fontFamily: '"Montserrat", "Poppins", "Arial Black", sans-serif',
-                fontSize: '22px',
-                fontWeight: 900,
-                textTransform: 'uppercase',
-                textAlign: 'center',
-                lineHeight: 1.25,
-                letterSpacing: '1.5px',
+                opacity: isActive ? 1 : 0,
+                pointerEvents: isActive ? 'auto' : 'none',
+                animation: isActive
+                  ? `previewFadeIn 0.5s ease-out forwards, previewKenBurns ${clipDuration}s linear forwards, previewDummy-${activeSubIndex} 0s`
+                  : 'none',
+              }}
+              loop
+              playsInline
+              muted={true}
+              className="absolute inset-0 w-full h-full object-cover bg-black"
+            />
+          );
+        })}
+
+        {/* Áudio de fundo sincronizado */}
+        {audioUrl && (
+          <audio
+            ref={audioRef}
+            src={audioUrl}
+            onTimeUpdate={handleTimeUpdate}
+            onLoadedMetadata={(e) => setAudioDuration(e.currentTarget.duration)}
+            onEnded={() => {
+              setIsPlaying(false);
+              setCurrentTime(0);
+            }}
+          />
+        )}
+
+        {/* Legendas Dinâmicas */}
+        {(() => {
+          const activeSubtitle = normalizedSubtitles.find(
+            (sub) => currentTime >= sub.start && currentTime <= sub.end
+          );
+          if (!activeSubtitle || !activeSubtitle.text.trim()) return null;
+
+          const words = activeSubtitle.text.trim().split(/\s+/);
+          const totalWords = words.length;
+          const subtitleDuration = activeSubtitle.end - activeSubtitle.start;
+          const elapsed = currentTime - activeSubtitle.start;
+
+          const activeWordIndex = totalWords > 1 && subtitleDuration > 0
+            ? Math.min(
+                Math.floor((elapsed / subtitleDuration) * totalWords),
+                totalWords - 1
+              )
+            : 0;
+
+          return (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
                 display: 'flex',
-                flexWrap: 'wrap',
                 justifyContent: 'center',
-                textShadow: '0 2px 4px rgba(0,0,0,0.8), 0 4px 10px rgba(0,0,0,0.4)',
+                alignItems: 'flex-end',
+                paddingBottom: '85px',
+                paddingLeft: '20px',
+                paddingRight: '20px',
+                pointerEvents: 'none',
+                zIndex: 30,
               }}
             >
-              {words.map((word: string, index: number) => {
-                const isActive = index === activeWordIndex;
-                
-                const wordDuration = subtitleDuration / totalWords;
-                const wordStart = activeSubtitle.start + index * wordDuration;
-                const wordElapsed = currentTime - wordStart;
-                const wordElapsedFrames = wordElapsed * 30; // 30fps mapping
-                
-                let scale = 1.0;
-                if (isActive && wordElapsedFrames >= 0) {
-                  if (wordElapsedFrames < 3) {
-                    scale = 1.0 + (wordElapsedFrames / 3) * 0.25;
-                  } else if (wordElapsedFrames < 6) {
-                    scale = 1.25 - ((wordElapsedFrames - 3) / 3) * 0.15;
-                  } else {
-                    scale = 1.10;
+              <h1
+                style={{
+                  fontFamily: '"Montserrat", "Poppins", "Arial Black", sans-serif',
+                  fontSize: '22px',
+                  fontWeight: 900,
+                  textTransform: 'uppercase',
+                  textAlign: 'center',
+                  lineHeight: 1.25,
+                  letterSpacing: '1.5px',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  justifyContent: 'center',
+                  textShadow: '0 2px 4px rgba(0,0,0,0.8), 0 4px 10px rgba(0,0,0,0.4)',
+                }}
+              >
+                {words.map((word: string, index: number) => {
+                  const isActive = index === activeWordIndex;
+                  
+                  const wordDuration = subtitleDuration / totalWords;
+                  const wordStart = activeSubtitle.start + index * wordDuration;
+                  const wordElapsed = currentTime - wordStart;
+                  const wordElapsedFrames = wordElapsed * 30; // 30fps mapping
+                  
+                  let scale = 1.0;
+                  if (isActive && wordElapsedFrames >= 0) {
+                    if (wordElapsedFrames < 3) {
+                      scale = 1.0 + (wordElapsedFrames / 3) * 0.25;
+                    } else if (wordElapsedFrames < 6) {
+                      scale = 1.25 - ((wordElapsedFrames - 3) / 3) * 0.15;
+                    } else {
+                      scale = 1.10;
+                    }
                   }
-                }
 
-                return (
-                  <span
-                    key={index}
-                    style={{
-                      color: isActive ? '#FFD700' : '#FFFFFF',
-                      marginRight: '5px',
-                      display: 'inline-block',
-                      transform: `scale(${scale})`,
-                      transition: isActive ? 'none' : 'transform 0.15s ease-out',
-                    }}
-                  >
-                    {word}
-                  </span>
-                );
-              })}
-            </h1>
-          </div>
-        );
-      })()}
+                  return (
+                    <span
+                      key={index}
+                      style={{
+                        color: isActive ? '#FFD700' : '#FFFFFF',
+                        marginRight: '5px',
+                        display: 'inline-block',
+                        transform: `scale(${scale})`,
+                        transition: isActive ? 'none' : 'transform 0.15s ease-out',
+                      }}
+                    >
+                      {word}
+                    </span>
+                  );
+                })}
+              </h1>
+            </div>
+          );
+        })()}
 
-      {/* Barra de Progresso Interativa */}
-      <div 
-        ref={progressBarRef}
-        onMouseDown={handleProgressMouseDown}
-        className="absolute bottom-0 inset-x-0 h-2 bg-white/15 z-30 cursor-pointer group/slider select-none"
-      >
+        {/* Barra de Progresso Interativa */}
         <div 
-          className="h-full bg-gradient-to-r from-blue-500 to-[#7c3aed] relative" 
-          style={{ width: `${totalDuration ? (currentTime / totalDuration) * 100 : 0}%` }}
+          ref={progressBarRef}
+          onMouseDown={handleProgressMouseDown}
+          className="absolute bottom-0 inset-x-0 h-2 bg-white/15 z-30 cursor-pointer group/slider select-none"
         >
-          {/* Handle flutuante no hover */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-lg opacity-0 group-hover/slider:opacity-100 transition-opacity" />
+          <div 
+            className="h-full bg-gradient-to-r from-blue-500 to-[#7c3aed] relative" 
+            style={{ width: `${totalDuration ? (currentTime / totalDuration) * 100 : 0}%` }}
+          >
+            {/* Handle flutuante no hover */}
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-lg opacity-0 group-hover/slider:opacity-100 transition-opacity" />
+          </div>
         </div>
-      </div>
 
-      {/* Controles do Player */}
-      <div className="absolute bottom-4 inset-x-4 flex items-center justify-between z-30 select-none pointer-events-auto">
-        <button 
-          onClick={togglePlay}
-          className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 cursor-pointer"
-        >
-          {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 fill-current ml-0.5" />}
-        </button>
-
-        <span className="text-[10px] text-white/95 font-bold bg-black/35 px-2.5 py-1 rounded-full border border-white/5 backdrop-blur-xs select-none">
-          {Math.floor(currentTime / 60)}:{String(Math.floor(currentTime % 60)).padStart(2, '0')} / {Math.floor(totalDuration / 60)}:{String(Math.floor(totalDuration % 60)).padStart(2, '0')}
-        </span>
-
-        <div className="flex items-center gap-1.5">
+        {/* Controles do Player */}
+        <div className="absolute bottom-4 inset-x-4 flex items-center justify-between z-30 select-none pointer-events-auto">
           <button 
-            onClick={toggleMute}
+            onClick={togglePlay}
             className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 cursor-pointer"
           >
-            {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+            {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 fill-current ml-0.5" />}
           </button>
-          
-          <button 
-            onClick={toggleFullscreen}
-            className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 cursor-pointer"
-            title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
-          >
-            {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
-          </button>
+
+          <span className="text-[10px] text-white/95 font-bold bg-black/35 px-2.5 py-1 rounded-full border border-white/5 backdrop-blur-xs select-none">
+            {Math.floor(currentTime / 60)}:{String(Math.floor(currentTime % 60)).padStart(2, '0')} / {Math.floor(totalDuration / 60)}:{String(Math.floor(totalDuration % 60)).padStart(2, '0')}
+          </span>
+
+          <div className="flex items-center gap-1.5">
+            <button 
+              onClick={toggleMute}
+              className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            >
+              {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+            </button>
+            
+            <button 
+              onClick={toggleFullscreen}
+              className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
+            >
+              {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
+            </button>
+          </div>
         </div>
       </div>
     </div>
