@@ -34,6 +34,57 @@ import {
 import { useDashboard } from '../../../context/DashboardContext';
 import { TabType, LanguageType, ToneType, DurationType } from '../../../types/dashboard';
 import { createClient } from '@supabase/supabase-js';
+const parseConsultantResponse = (rawText: string) => {
+  const marker = '{"script_ready"';
+  const markerIndex = rawText.indexOf(marker);
+
+  if (markerIndex === -1) {
+    return {
+      cleanText: rawText.trim(),
+      recommendedPrompt: null
+    };
+  }
+
+  // O JSON começa no markerIndex
+  const jsonSubstring = rawText.substring(markerIndex);
+  
+  // Encontra o fechamento da chave '}'
+  const endBraceIndex = jsonSubstring.lastIndexOf('}');
+  
+  let jsonString = jsonSubstring;
+  if (endBraceIndex !== -1) {
+    jsonString = jsonSubstring.substring(0, endBraceIndex + 1);
+  }
+
+  let recommendedPrompt: string | null = null;
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (parsed.script_ready && parsed.recommended_prompt) {
+      recommendedPrompt = parsed.recommended_prompt;
+    }
+  } catch (e) {
+    console.error('Falha ao fazer parse do JSON do prompt do consultor:', e);
+    // Fallback de Regex caso o JSON esteja mal formatado
+    const match = jsonString.match(/"recommended_prompt"\s*:\s*"([^"]+)"/);
+    if (match) {
+      recommendedPrompt = match[1];
+    }
+  }
+
+  // Remove o bloco JSON do texto original
+  const textBeforeJson = rawText.substring(0, markerIndex);
+  
+  // Limpeza agressiva do texto
+  const cleanText = textBeforeJson
+    .trim()
+    .replace(/\n\s*\n/g, '\n')
+    .trim();
+
+  return {
+    cleanText,
+    recommendedPrompt
+  };
+};
 
 export default function CreationDashboard() {
   const { credits, decrementCredits, videoState, setVideoState, activeTab, setActiveTab } = useDashboard();
@@ -83,7 +134,19 @@ export default function CreationDashboard() {
   const [chatInput, setChatInput] = useState('');
   const [isConsultantLoading, setIsConsultantLoading] = useState(false);
   const [recommendedPrompt, setRecommendedPrompt] = useState<string | null>(null);
+  const [chatId, setChatId] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let id = localStorage.getItem('aether_chat_id');
+    if (!id) {
+      id = typeof crypto !== 'undefined' && crypto.randomUUID 
+        ? crypto.randomUUID() 
+        : `chat-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`;
+      localStorage.setItem('aether_chat_id', id);
+    }
+    setChatId(id);
+  }, []);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -123,7 +186,7 @@ export default function CreationDashboard() {
     }
   };
 
-  const handleSendConsultantMessage = () => {
+  const handleSendConsultantMessage = async () => {
     if (!chatInput.trim() || isConsultantLoading) return;
 
     const userText = chatInput.trim();
@@ -131,49 +194,51 @@ export default function CreationDashboard() {
     
     setChatMessages(prev => [...prev, { id: newMsgId, sender: 'user', text: userText }]);
     setChatInput('');
+    setRecommendedPrompt(null); // Limpa o prompt recomendado anterior ao enviar nova mensagem
     setIsConsultantLoading(true);
 
-    setTimeout(() => {
-      const userMessages = [...chatMessages.filter(m => m.sender === 'user'), { id: newMsgId, sender: 'user', text: userText }];
-      const userMessagesCount = userMessages.length;
-      let replyText = '';
+    try {
+      const currentChatId = chatId || `chat-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`;
+      const response = await fetch('/api/consultor', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: userText,
+          chat_id: currentChatId
+        })
+      });
 
-      if (userMessagesCount === 1) {
-        replyText = `🤖 Consultor Aether: Fantástico! O nicho de "${userText}" tem um engajamento absurdo no Reels hoje em dia. 
-
-Para estruturar um Reels de alta performance para esse nicho, sugiro uma estrutura de Gancho de Curiosidade (0-3s), seguido de 3 Dicas Práticas (3-12s) e uma Chamada de Ação Inteligente (12-15s).
-
-Qual o objetivo principal do seu vídeo hoje?
-1. Atrair seguidores (dicas gerais)
-2. Vender um produto/serviço (demonstração de valor)
-3. Criar conexão (storytelling/bastidores)`;
-      } else if (userMessagesCount === 2) {
-        const nicheText = userMessages[0]?.text || 'conteúdo estratégico';
-        replyText = `🤖 Consultor Aether: Excelente escolha! Focar nisso vai trazer excelentes leads e visualizações.
-
-Preparei um Roteiro Estratégico otimizado para o Gemini 2.5 gerar o melhor vídeo possível para você:
-"Gere um vídeo dinâmico para o Reels sobre ${nicheText}. A estratégia principal é focar em ${userText}. Use cortes rápidos, cores vibrantes, legendas em destaque com palavras-chaves amareladas e uma trilha sonora moderna."
-
-Deseja aprovar e gerar esse vídeo com este roteiro estratégico? Diga "sim" ou comente o que gostaria de alterar!`;
-      } else {
-        const nicheText = userMessages[0]?.text || 'conteúdo estratégico';
-        const focusText = userMessages[1]?.text || userText;
-        replyText = `🤖 Consultor Aether: Incrível! O roteiro estratégico foi totalmente aprovado e otimizado. 
-
-✨ Roteiro Pronto para Envio:
-"Gere um vídeo dinâmico para o Reels sobre ${nicheText}. Foco: ${focusText}. Cuts rápidos, legendas premium e música perfeita."
-
-O botão de "Gerar Vídeo" no rodapé agora está ativo e brilhando com um pulsar neon! Clique nele para iniciar a renderização estratégica.`;
-        
-        setRecommendedPrompt(`Gere um vídeo dinâmico para o Reels sobre ${nicheText}. Foco: ${focusText}. Cuts rápidos, legendas premium e música perfeita.`);
+      if (!response.ok) {
+        throw new Error('Falha ao receber resposta do consultor.');
       }
+
+      const data = await response.json();
+      const rawResponse = data.response || '';
+
+      // Processa a resposta extraindo o prompt recomendado e limpando o texto de resíduos JSON
+      const { cleanText, recommendedPrompt: parsedPrompt } = parseConsultantResponse(rawResponse);
 
       setChatMessages(prev => [
         ...prev,
-        { id: `consultant-${Date.now()}`, sender: 'consultant', text: replyText }
+        { id: `consultant-${Date.now()}`, sender: 'consultant', text: cleanText || 'Roteiro e ideias processadas com sucesso!' }
       ]);
+
+      if (parsedPrompt) {
+        console.log('✨ Prompt estratégico recomendado recebido:', parsedPrompt);
+        setRecommendedPrompt(parsedPrompt);
+      }
+
+    } catch (err: any) {
+      console.error('Erro de comunicação com o consultor:', err);
+      setChatMessages(prev => [
+        ...prev,
+        { id: `consultant-error-${Date.now()}`, sender: 'consultant', text: '🤖 Consultor Aether: Desculpe, encontrei uma falha de conexão ao me comunicar com o motor de inteligência artificial. Por favor, tente enviar a mensagem novamente.' }
+      ]);
+    } finally {
       setIsConsultantLoading(false);
-    }, 2000);
+    }
   };
 
   useEffect(() => {
