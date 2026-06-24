@@ -26,6 +26,7 @@ import {
   GraduationCap,
   Dumbbell,
   Mic,
+  MicOff,
   Heart,
   MessageCircle,
   Share2,
@@ -137,6 +138,11 @@ export default function CreationDashboard() {
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isConsultantLoading, setIsConsultantLoading] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+  const [isPromptListening, setIsPromptListening] = useState(false);
+  const [isChatListening, setIsChatListening] = useState(false);
+  const promptRecognitionRef = useRef<any>(null);
+  const chatRecognitionRef = useRef<any>(null);
   const [recommendedPrompt, setRecommendedPrompt] = useState<string | null>(null);
   const [chatId, setChatId] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -157,6 +163,115 @@ export default function CreationDashboard() {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [chatMessages, isConsultantLoading]);
+
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setIsSpeechSupported(true);
+    }
+    return () => {
+      if (promptRecognitionRef.current) {
+        promptRecognitionRef.current.stop();
+      }
+      if (chatRecognitionRef.current) {
+        chatRecognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const togglePromptListening = () => {
+    if (isPromptListening) {
+      promptRecognitionRef.current?.stop();
+      setIsPromptListening(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    if (isChatListening) {
+      chatRecognitionRef.current?.stop();
+      setIsChatListening(false);
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'pt-BR';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    recognition.onstart = () => {
+      setIsPromptListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const resultText = event.results[0][0].transcript;
+      if (resultText) {
+        setPrompt(prev => {
+          const base = prev.trim();
+          return base ? `${base} ${resultText.trim()}` : resultText.trim();
+        });
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Prompt speech recognition error:', event.error);
+      setIsPromptListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsPromptListening(false);
+    };
+
+    promptRecognitionRef.current = recognition;
+    recognition.start();
+  };
+
+  const toggleChatListening = () => {
+    if (isChatListening) {
+      chatRecognitionRef.current?.stop();
+      setIsChatListening(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    if (isPromptListening) {
+      promptRecognitionRef.current?.stop();
+      setIsPromptListening(false);
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'pt-BR';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    recognition.onstart = () => {
+      setIsChatListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const resultText = event.results[0][0].transcript;
+      if (resultText) {
+        setChatInput(prev => {
+          const base = prev.trim();
+          return base ? `${base} ${resultText.trim()}` : resultText.trim();
+        });
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Chat speech recognition error:', event.error);
+      setIsChatListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsChatListening(false);
+    };
+
+    chatRecognitionRef.current = recognition;
+    recognition.start();
+  };
 
   const handleSendConsultantMessage = async () => {
     if (!chatInput.trim() || isConsultantLoading) return;
@@ -837,14 +952,30 @@ export default function CreationDashboard() {
                 />
                 <div className="flex items-center justify-between border-t border-slate-900/40 pt-2.5 mt-1.5 select-none">
                   <span className="text-[11px] text-slate-500 font-semibold">{prompt.length}/4000</span>
-                  <button 
-                    onClick={handleGenerateVideo} 
-                    disabled={videoState === 'loading' || !prompt.trim()} 
-                    className="h-8 w-8 flex items-center justify-center rounded-full bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] text-white hover:opacity-95 active:scale-95 transition-all shadow-md shadow-indigo-600/10 disabled:opacity-30 disabled:cursor-not-allowed"
-                    title="Enviar Prompt"
-                  >
-                    <Send className="h-3.5 w-3.5 rotate-270 text-white" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {isSpeechSupported && (
+                      <button
+                        type="button"
+                        onClick={togglePromptListening}
+                        className={`h-8 w-8 flex items-center justify-center rounded-full transition-all duration-300 ${
+                          isPromptListening
+                            ? 'bg-red-500 animate-pulse text-white shadow-lg shadow-red-500/20'
+                            : 'bg-[#15233c] text-slate-400 hover:text-white hover:bg-slate-800'
+                        }`}
+                        title={isPromptListening ? "Parar gravação" : "Gravar áudio"}
+                      >
+                        {isPromptListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                      </button>
+                    )}
+                    <button 
+                      onClick={handleGenerateVideo} 
+                      disabled={videoState === 'loading' || !prompt.trim()} 
+                      className="h-8 w-8 flex items-center justify-center rounded-full bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] text-white hover:opacity-95 active:scale-95 transition-all shadow-md shadow-indigo-600/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="Enviar Prompt"
+                    >
+                      <Send className="h-3.5 w-3.5 rotate-270 text-white" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -943,6 +1074,21 @@ export default function CreationDashboard() {
                   className="flex-1 bg-transparent text-slate-100 placeholder-slate-500 text-sm outline-none"
                   disabled={isConsultantLoading}
                 />
+                {isSpeechSupported && (
+                  <button
+                    type="button"
+                    onClick={toggleChatListening}
+                    disabled={isConsultantLoading}
+                    className={`h-8 w-8 flex items-center justify-center rounded-full transition-all duration-300 ${
+                      isChatListening
+                        ? 'bg-red-500 animate-pulse text-white shadow-lg shadow-red-500/20'
+                        : 'bg-[#15233c] text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30'
+                    }`}
+                    title={isChatListening ? "Parar gravação" : "Gravar áudio"}
+                  >
+                    {isChatListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                  </button>
+                )}
                 <button
                   onClick={handleSendConsultantMessage}
                   disabled={isConsultantLoading || !chatInput.trim()}
