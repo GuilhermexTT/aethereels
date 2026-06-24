@@ -34,57 +34,6 @@ import {
 import { useDashboard } from '../../../context/DashboardContext';
 import { TabType, LanguageType, ToneType, DurationType } from '../../../types/dashboard';
 import { createClient } from '@supabase/supabase-js';
-const parseConsultantResponse = (rawText: string) => {
-  const marker = '{"script_ready"';
-  const markerIndex = rawText.indexOf(marker);
-
-  if (markerIndex === -1) {
-    return {
-      cleanText: rawText.trim(),
-      recommendedPrompt: null
-    };
-  }
-
-  // O JSON começa no markerIndex
-  const jsonSubstring = rawText.substring(markerIndex);
-  
-  // Encontra o fechamento da chave '}'
-  const endBraceIndex = jsonSubstring.lastIndexOf('}');
-  
-  let jsonString = jsonSubstring;
-  if (endBraceIndex !== -1) {
-    jsonString = jsonSubstring.substring(0, endBraceIndex + 1);
-  }
-
-  let recommendedPrompt: string | null = null;
-  try {
-    const parsed = JSON.parse(jsonString);
-    if (parsed.script_ready && parsed.recommended_prompt) {
-      recommendedPrompt = parsed.recommended_prompt;
-    }
-  } catch (e) {
-    console.error('Falha ao fazer parse do JSON do prompt do consultor:', e);
-    // Fallback de Regex caso o JSON esteja mal formatado
-    const match = jsonString.match(/"recommended_prompt"\s*:\s*"([^"]+)"/);
-    if (match) {
-      recommendedPrompt = match[1];
-    }
-  }
-
-  // Remove o bloco JSON do texto original
-  const textBeforeJson = rawText.substring(0, markerIndex);
-  
-  // Limpeza agressiva do texto
-  const cleanText = textBeforeJson
-    .trim()
-    .replace(/\n\s*\n/g, '\n')
-    .trim();
-
-  return {
-    cleanText,
-    recommendedPrompt
-  };
-};
 
 export default function CreationDashboard() {
   const { credits, decrementCredits, videoState, setVideoState, activeTab, setActiveTab } = useDashboard();
@@ -123,31 +72,6 @@ export default function CreationDashboard() {
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [generationMode, setGenerationMode] = useState<'prompt' | 'consultant'>('prompt');
-  const [chatMessages, setChatMessages] = useState<Array<{ id: string; sender: 'consultant' | 'user'; text: string }>>([
-    {
-      id: 'welcome',
-      sender: 'consultant',
-      text: '🤖 Consultor Aether: Olá! Sou o seu consultor estratégico privado. Vamos planejar o seu Reels de hoje usando o poder do Gemini 2.5? Me conte, qual é o seu nicho?'
-    }
-  ]);
-  const [chatInput, setChatInput] = useState('');
-  const [isConsultantLoading, setIsConsultantLoading] = useState(false);
-  const [recommendedPrompt, setRecommendedPrompt] = useState<string | null>(null);
-  const [chatId, setChatId] = useState('');
-  const chatEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    let id = localStorage.getItem('aether_chat_id');
-    if (!id) {
-      id = typeof crypto !== 'undefined' && crypto.randomUUID 
-        ? crypto.randomUUID() 
-        : `chat-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`;
-      localStorage.setItem('aether_chat_id', id);
-    }
-    setChatId(id);
-  }, []);
-
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -185,68 +109,6 @@ export default function CreationDashboard() {
       setPrompt(prompts[tag]);
     }
   };
-
-  const handleSendConsultantMessage = async () => {
-    if (!chatInput.trim() || isConsultantLoading) return;
-
-    const userText = chatInput.trim();
-    const newMsgId = `user-${Date.now()}`;
-    
-    setChatMessages(prev => [...prev, { id: newMsgId, sender: 'user', text: userText }]);
-    setChatInput('');
-    setRecommendedPrompt(null); // Limpa o prompt recomendado anterior ao enviar nova mensagem
-    setIsConsultantLoading(true);
-
-    try {
-      const currentChatId = chatId || `chat-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`;
-      const response = await fetch('/api/consultor', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message: userText,
-          chat_id: currentChatId
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Falha ao receber resposta do consultor.');
-      }
-
-      const data = await response.json();
-      const rawResponse = data.response || '';
-
-      // Processa a resposta extraindo o prompt recomendado e limpando o texto de resíduos JSON
-      const { cleanText, recommendedPrompt: parsedPrompt } = parseConsultantResponse(rawResponse);
-
-      setChatMessages(prev => [
-        ...prev,
-        { id: `consultant-${Date.now()}`, sender: 'consultant', text: cleanText || 'Roteiro e ideias processadas com sucesso!' }
-      ]);
-
-      if (parsedPrompt) {
-        console.log('✨ Prompt estratégico recomendado recebido:', parsedPrompt);
-        setRecommendedPrompt(parsedPrompt);
-      }
-
-    } catch (err: any) {
-      console.error('Erro de comunicação com o consultor:', err);
-      setChatMessages(prev => [
-        ...prev,
-        { id: `consultant-error-${Date.now()}`, sender: 'consultant', text: '🤖 Consultor Aether: Desculpe, encontrei uma falha de conexão ao me comunicar com o motor de inteligência artificial. Por favor, tente enviar a mensagem novamente.' }
-      ]);
-    } finally {
-      setIsConsultantLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [chatMessages, isConsultantLoading]);
-
   useEffect(() => {
     if (videoState === 'idle') {
       setVideoState('ready');
@@ -680,8 +542,7 @@ export default function CreationDashboard() {
 
   const handleGenerateVideo = async () => {
     if (credits <= 0) return;
-    const activePrompt = generationMode === 'consultant' ? recommendedPrompt : prompt;
-    if (!activePrompt || !activePrompt.trim()) return;
+    if (!prompt || !prompt.trim()) return;
 
     try {
       setVideoState('loading');
@@ -693,7 +554,7 @@ export default function CreationDashboard() {
       const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
       const selectedLanguage = language === 'pt' ? 'Português' : language === 'en' ? 'Inglês' : 'Espanhol';
-      const formattedPrompt = `${activePrompt.trim()} (Idioma: ${selectedLanguage}, Tom: ${tone}, Duração: ${duration})`;
+      const formattedPrompt = `${prompt.trim()} (Idioma: ${selectedLanguage}, Tom: ${tone}, Duração: ${duration})`;
 
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
@@ -790,36 +651,8 @@ export default function CreationDashboard() {
           </div>
         </div>
 
-        {/* Switcher de Modos: Neon Pills Tabs */}
-        <div className="flex mt-2 select-none">
-          <div className="flex p-1 rounded-full bg-[#060a13] border border-[#15233c]/60 shadow-[0_0_15px_rgba(59,130,246,0.05)]">
-            <button
-              onClick={() => setGenerationMode('prompt')}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 ${
-                generationMode === 'prompt'
-                  ? 'bg-gradient-to-r from-blue-500/10 to-indigo-500/10 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
-              }`}
-            >
-              <span>✨</span>
-              <span>Prompt Direto</span>
-            </button>
-            <button
-              onClick={() => setGenerationMode('consultant')}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 ${
-                generationMode === 'consultant'
-                  ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-400 border border-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
-                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
-              }`}
-            >
-              <span>🤖</span>
-              <span>Consultor de Conteúdo</span>
-            </button>
-          </div>
-        </div>
-
         {/* Heading principal */}
-        <div className="flex flex-col">
+        <div className="flex flex-col mt-2">
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-white leading-tight">
             O que você quer transformar em <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-400">vídeo?</span>
           </h1>
@@ -827,135 +660,74 @@ export default function CreationDashboard() {
 
         {/* Container Principal do Formulário */}
         <div className="flex flex-col gap-4">
-          {generationMode === 'prompt' ? (
-            <>
-              {/* Caixa de Texto do Prompt */}
-              <div className="relative rounded-2xl border border-blue-500/80 shadow-[0_0_20px_rgba(59,130,246,0.12)] bg-[#060a13] p-3.5 transition-all duration-300">
-                <textarea 
-                  value={prompt} 
-                  onChange={(e) => setPrompt(e.target.value)} 
-                  placeholder="Descreva sua ideia aqui..." 
-                  className="w-full min-h-[96px] bg-transparent text-slate-100 placeholder-slate-500 text-sm outline-none resize-none leading-relaxed" 
-                />
-                <div className="flex items-center justify-between border-t border-slate-900/40 pt-2.5 mt-1.5 select-none">
-                  <span className="text-[11px] text-slate-500 font-semibold">{prompt.length}/4000</span>
-                  <button 
-                    onClick={handleGenerateVideo} 
-                    disabled={videoState === 'loading' || !prompt.trim()} 
-                    className="h-8 w-8 flex items-center justify-center rounded-full bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] text-white hover:opacity-95 active:scale-95 transition-all shadow-md shadow-indigo-600/10 disabled:opacity-30 disabled:cursor-not-allowed"
-                    title="Enviar Prompt"
-                  >
-                    <Send className="h-3.5 w-3.5 rotate-270 text-white" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Separador OU */}
-              <div className="flex items-center gap-4 py-0.5 select-none">
-                <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-slate-800/60 to-transparent" />
-                <span className="text-[10px] text-slate-500 font-extrabold tracking-widest uppercase">OU</span>
-                <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-slate-800/60 to-transparent" />
-              </div>
-
-              {/* Área de Drag & Drop para Upload de Arquivos */}
-              <div 
-                onClick={() => fileInputRef.current?.click()}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-2xl p-4.5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
-                  dragActive 
-                    ? 'border-blue-500/80 bg-blue-500/5 shadow-[0_0_20px_rgba(59,130,246,0.12)]' 
-                    : 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.06)] bg-[#060a13]/30 hover:bg-[#060a13]/55 hover:border-blue-500/80 hover:shadow-[0_0_20px_rgba(59,130,246,0.12)]'
-                }`}
+          {/* Caixa de Texto do Prompt */}
+          <div className="relative rounded-2xl border border-blue-500/80 shadow-[0_0_20px_rgba(59,130,246,0.12)] bg-[#060a13] p-3.5 transition-all duration-300">
+            <textarea 
+              value={prompt} 
+              onChange={(e) => setPrompt(e.target.value)} 
+              placeholder="Descreva sua ideia aqui..." 
+              className="w-full min-h-[96px] bg-transparent text-slate-100 placeholder-slate-500 text-sm outline-none resize-none leading-relaxed" 
+            />
+            <div className="flex items-center justify-between border-t border-slate-900/40 pt-2.5 mt-1.5 select-none">
+              <span className="text-[11px] text-slate-500 font-semibold">{prompt.length}/4000</span>
+              <button 
+                onClick={handleGenerateVideo} 
+                disabled={videoState === 'loading' || !prompt.trim()} 
+                className="h-8 w-8 flex items-center justify-center rounded-full bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] text-white hover:opacity-95 active:scale-95 transition-all shadow-md shadow-indigo-600/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Enviar Prompt"
               >
-                <input 
-                  ref={fileInputRef}
-                  type="file" 
-                  className="hidden" 
-                  multiple 
-                  onChange={handleFileChange}
-                />
-                {selectedFileName ? (
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                      <CheckCircle2 className="h-4.5 w-4.5" />
-                    </div>
-                    <span className="text-xs font-semibold text-slate-200">Arquivo Selecionado</span>
-                    <span className="text-[11px] text-slate-400 max-w-[280px] truncate">{selectedFileName}</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="h-9 w-9 rounded-full bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
-                      <Upload className="h-4.5 w-4.5" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs font-semibold text-slate-300">Arraste e solte suas fotos ou vídeos aqui</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">ou clique para selecionar arquivos</p>
-                    </div>
-                  </>
-                )}
-              </div>
-            </>
-          ) : (
-            /* Interface do Consultor de Conteúdo */
-            <div className="flex flex-col rounded-2xl border border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.12)] bg-[#060a13] p-4 transition-all duration-300 h-[380px] justify-between">
-              {/* Mensagens do Chat */}
-              <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3 scrollbar-thin scrollbar-thumb-indigo-500/20 scrollbar-track-transparent">
-                {chatMessages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex flex-col max-w-[80%] ${
-                      msg.sender === 'user' ? 'self-end' : 'self-start'
-                    }`}
-                  >
-                    <div
-                      className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                        msg.sender === 'user'
-                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-tr-none shadow-md shadow-indigo-600/10'
-                          : 'bg-[#0c1426] border border-[#1e2d4a]/50 text-slate-100 rounded-tl-none'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap">{msg.text}</p>
-                    </div>
-                  </div>
-                ))}
-                {isConsultantLoading && (
-                  <div className="self-start flex items-center gap-2 text-xs text-indigo-400 font-medium italic animate-pulse py-1">
-                    <Loader2 className="h-3 w-3 animate-spin text-indigo-400" />
-                    <span>🤖 Consultor está digitando...</span>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-
-              {/* Input do Chat */}
-              <div className="flex items-center gap-2 border-t border-slate-900/40 pt-3 mt-3 select-none">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSendConsultantMessage();
-                    }
-                  }}
-                  placeholder="Responda ao consultor..."
-                  className="flex-1 bg-transparent text-slate-100 placeholder-slate-500 text-sm outline-none"
-                  disabled={isConsultantLoading}
-                />
-                <button
-                  onClick={handleSendConsultantMessage}
-                  disabled={isConsultantLoading || !chatInput.trim()}
-                  className="h-8 w-8 flex items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white hover:opacity-95 active:scale-95 transition-all shadow-md shadow-indigo-600/10 disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Enviar mensagem"
-                >
-                  <Send className="h-3.5 w-3.5 text-white" />
-                </button>
-              </div>
+                <Send className="h-3.5 w-3.5 rotate-270 text-white" />
+              </button>
             </div>
-          )}
+          </div>
+
+          {/* Separador OU */}
+          <div className="flex items-center gap-4 py-0.5 select-none">
+            <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-slate-800/60 to-transparent" />
+            <span className="text-[10px] text-slate-500 font-extrabold tracking-widest uppercase">OU</span>
+            <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-slate-800/60 to-transparent" />
+          </div>
+
+          {/* Área de Drag & Drop para Upload de Arquivos */}
+          <div 
+            onClick={() => fileInputRef.current?.click()}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            className={`border-2 border-dashed rounded-2xl p-4.5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+              dragActive 
+                ? 'border-blue-500/80 bg-blue-500/5 shadow-[0_0_20px_rgba(59,130,246,0.12)]' 
+                : 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.06)] bg-[#060a13]/30 hover:bg-[#060a13]/55 hover:border-blue-500/80 hover:shadow-[0_0_20px_rgba(59,130,246,0.12)]'
+            }`}
+          >
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              className="hidden" 
+              multiple 
+              onChange={handleFileChange}
+            />
+            {selectedFileName ? (
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                  <CheckCircle2 className="h-4.5 w-4.5" />
+                </div>
+                <span className="text-xs font-semibold text-slate-200">Arquivo Selecionado</span>
+                <span className="text-[11px] text-slate-400 max-w-[280px] truncate">{selectedFileName}</span>
+              </div>
+            ) : (
+              <>
+                <div className="h-9 w-9 rounded-full bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
+                  <Upload className="h-4.5 w-4.5" />
+                </div>
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-slate-300">Arraste e solte suas fotos ou vídeos aqui</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">ou clique para selecionar arquivos</p>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Seção de Ideias Populares */}
           <div className="flex flex-col gap-1.5 select-none">
@@ -991,28 +763,21 @@ export default function CreationDashboard() {
             <button 
               onClick={handleGenerateVideo} 
               disabled={
-                videoState === 'loading' || 
-                (generationMode === 'prompt' ? !prompt.trim() : !recommendedPrompt)
+                videoState === 'loading' || !prompt.trim()
               } 
               className={`w-full py-3.5 rounded-2xl font-bold text-white transition-all duration-200 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center gap-0.5 shadow-lg ${
-                videoState === 'loading' || (generationMode === 'prompt' ? !prompt.trim() : !recommendedPrompt)
+                videoState === 'loading' || !prompt.trim()
                   ? 'bg-gradient-to-r from-blue-600 to-[#7c3aed] opacity-50 cursor-not-allowed shadow-indigo-600/10'
-                  : generationMode === 'consultant'
-                    ? 'bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500 animate-pulse shadow-[0_0_20px_rgba(168,85,247,0.6)] border border-purple-500/30 hover:opacity-95'
-                    : 'bg-gradient-to-r from-blue-600 to-[#7c3aed] hover:from-blue-700 hover:to-[#6d28d9] shadow-indigo-600/10'
+                  : 'bg-gradient-to-r from-blue-600 to-[#7c3aed] hover:from-blue-700 hover:to-[#6d28d9] shadow-indigo-600/10'
               }`}
             >
               <span className="text-sm tracking-wide">
                 {videoState === 'loading'
                   ? `Compilando... (${loadingProgress}%)`
-                  : generationMode === 'consultant'
-                    ? '✨ Gerar vídeo estratégico (n8n)'
-                    : '✨ Gerar vídeo'}
+                  : '✨ Gerar vídeo'}
               </span>
               <span className="text-[10px] text-white/70 font-semibold normal-case">
-                {generationMode === 'consultant'
-                  ? 'Roteiro inteligente pronto para processar via n8n • 1 crédito'
-                  : '1 crédito será consumido'}
+                1 crédito será consumido
               </span>
             </button>
             <div className="flex items-center justify-center gap-1 text-[10px] text-amber-500/90 font-bold">
