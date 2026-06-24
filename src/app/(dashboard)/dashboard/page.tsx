@@ -133,7 +133,7 @@ export default function CreationDashboard() {
     {
       id: 'welcome',
       sender: 'consultant',
-      text: '🤖 Consultor Aether: Olá! Sou o seu consultor estratégico privado. Vamos planejar o seu Reels de hoje usando o poder do Gemini 2.5? Me conte, qual é o seu nicho?'
+      text: '🤖 Consultor da Adisea: Olá! Sou o seu consultor estratégico privado. Vamos planejar o seu Reels de hoje usando o poder do Gemini 2.5? Me conte, qual é o seu nicho?'
     }
   ]);
   const [chatInput, setChatInput] = useState('');
@@ -324,7 +324,7 @@ export default function CreationDashboard() {
       console.error('Erro de comunicação com o consultor:', err);
       setChatMessages(prev => [
         ...prev,
-        { id: `consultant-error-${Date.now()}`, sender: 'consultant', text: '🤖 Consultor Aether: Desculpe, encontrei uma falha de conexão ao me comunicar com o motor de inteligência artificial. Por favor, tente enviar a mensagem novamente.' }
+        { id: `consultant-error-${Date.now()}`, sender: 'consultant', text: '🤖 Consultor da Adisea: Desculpe, encontrei uma falha de conexão ao me comunicar com o motor de inteligência artificial. Por favor, tente enviar a mensagem novamente.' }
       ]);
     } finally {
       setIsConsultantLoading(false);
