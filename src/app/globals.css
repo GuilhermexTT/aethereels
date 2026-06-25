@@ -117,3 +117,51 @@ body {
 .animate-card-out {
   animation: modal-card-out 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Accessibility Sizing */
+html {
+  font-size: calc(16px * var(--text-scale, 1));
+  transition: font-size 0.15s ease-out;
+}
+
+/* Keyboard focus visibility outline */
+*:focus-visible {
+  outline: 2px solid #8b5cf6 !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.3) !important;
+}
+
+/* Reduced Motion Override class & media queries */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.reduced-motion, .reduced-motion *, .reduced-motion ::before, .reduced-motion ::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+  animation-name: none !important;
+  transition: none !important;
+}
+
+/* Premium Skeleton loaders */
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.animate-pulse-skeleton {
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background-color: rgba(30, 41, 59, 0.55);
+}
+

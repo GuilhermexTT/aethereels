@@ -921,7 +921,11 @@ export default function CreationDashboard() {
                 className="w-full min-h-[96px] bg-transparent text-slate-100 placeholder-slate-500 text-sm outline-none resize-none leading-relaxed" 
               />
               <div className="flex items-center justify-between border-t border-slate-900/40 pt-2.5 mt-1.5 select-none">
-                <span className="text-[11px] text-slate-500 font-semibold">{prompt.length}/4000</span>
+                {prompt.trim().length === 0 ? (
+                  <span className="text-[10px] text-amber-500 font-bold tracking-wide">⚠️ Digite sua ideia para gerar o vídeo</span>
+                ) : (
+                  <span className="text-[11px] text-slate-500 font-semibold">{prompt.length}/4000</span>
+                )}
                 <div className="flex items-center gap-2">
                   {isSpeechSupported && (
                     <button
@@ -1051,6 +1055,76 @@ export default function CreationDashboard() {
             </div>
           </div>
 
+          {/* Opções Avançadas da IA */}
+          <div className="grid grid-cols-3 gap-3.5 bg-[#040812]/50 border border-[#16223f]/50 rounded-2xl p-3.5 select-none">
+            {/* Idioma */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                Idioma
+                <span className="group relative inline-block cursor-help text-slate-550" aria-label="Ajuda sobre Idioma">
+                  <span className="text-[9px] bg-slate-950 border border-slate-800/80 rounded-full h-3.5 w-3.5 flex items-center justify-center">?</span>
+                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 rounded-xl bg-slate-950 border border-[#16223f]/80 p-2.5 text-[9px] text-slate-350 font-medium leading-normal opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 text-left shadow-2xl">
+                    O idioma no qual a inteligência artificial criará o roteiro e narrará a voz do vídeo.
+                  </span>
+                </span>
+              </label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as LanguageType)}
+                className="w-full bg-slate-950/60 border border-[#16223f]/40 hover:border-slate-800 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-200 outline-none transition-colors cursor-pointer"
+              >
+                <option value="pt">🇧🇷 Português</option>
+                <option value="en">🇺🇸 Inglês</option>
+                <option value="es">🇪🇸 Espanhol</option>
+              </select>
+            </div>
+
+            {/* Tom de voz */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                Tom de voz
+                <span className="group relative inline-block cursor-help text-slate-550" aria-label="Ajuda sobre Tom de voz">
+                  <span className="text-[9px] bg-slate-950 border border-slate-800/80 rounded-full h-3.5 w-3.5 flex items-center justify-center">?</span>
+                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 rounded-xl bg-slate-950 border border-[#16223f]/80 p-2.5 text-[9px] text-slate-350 font-medium leading-normal opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 text-left shadow-2xl">
+                    Adapta a atitude e entonação da voz gerada (ex: enérgico, calmo, vendedor).
+                  </span>
+                </span>
+              </label>
+              <select
+                value={tone}
+                onChange={(e) => setTone(e.target.value as ToneType)}
+                className="w-full bg-slate-950/60 border border-[#16223f]/40 hover:border-slate-800 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-200 outline-none transition-colors cursor-pointer"
+              >
+                <option value="envolvente">Envolvente</option>
+                <option value="profissional">Profissional</option>
+                <option value="humorado">Humorado</option>
+                <option value="urgente">Urgente</option>
+              </select>
+            </div>
+
+            {/* Duração */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                Duração
+                <span className="group relative inline-block cursor-help text-slate-550" aria-label="Ajuda sobre Duração">
+                  <span className="text-[9px] bg-slate-950 border border-slate-800/80 rounded-full h-3.5 w-3.5 flex items-center justify-center">?</span>
+                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 rounded-xl bg-slate-950 border border-[#16223f]/80 p-2.5 text-[9px] text-slate-350 font-medium leading-normal opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 text-left shadow-2xl">
+                    Define o limite de tempo aproximado para a narração e roteiro gerados pela IA.
+                  </span>
+                </span>
+              </label>
+              <select
+                value={duration}
+                onChange={(e) => setDuration(e.target.value as DurationType)}
+                className="w-full bg-slate-950/60 border border-[#16223f]/40 hover:border-slate-800 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-200 outline-none transition-colors cursor-pointer"
+              >
+                <option value="30s">30 segundos</option>
+                <option value="60s">60 segundos</option>
+                <option value="90s">90 segundos</option>
+              </select>
+            </div>
+          </div>
+
           {/* Botão de Geração */}
           <div className="flex flex-col gap-2 mt-0.5 select-none">
             <button 
@@ -1147,9 +1221,55 @@ export default function CreationDashboard() {
               )}
               
               {videoState === 'loading' && (
-                <div className="w-full h-full flex flex-col justify-center items-center gap-2.5 p-4 text-center select-none bg-black">
-                  <Loader2 className="h-7 w-7 text-cyan-400 animate-spin" />
-                  <span className="text-xs text-slate-200 font-semibold animate-pulse">{loadingLog}</span>
+                <div className="w-full h-full flex flex-col justify-end p-4 relative select-none bg-[#02050c] overflow-hidden">
+                  {/* Pulse background */}
+                  <div className="absolute inset-0 bg-[#080c17]/60 animate-pulse-skeleton z-0" />
+                  
+                  {/* Subtle progress loading overlay */}
+                  <div className="absolute top-9 left-4 z-30 select-none">
+                    <div className="bg-[#0a1122]/90 border border-slate-700/50 backdrop-blur-md text-[9px] text-cyan-400 font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-md">
+                      <Loader2 className="h-2.5 w-2.5 text-cyan-400 animate-spin" />
+                      <span className="animate-pulse">{loadingLog} ({loadingProgress}%)</span>
+                    </div>
+                  </div>
+
+                  {/* Reels layout skeletons */}
+                  {/* Subtitles skeleton block */}
+                  <div className="w-[80%] mx-auto h-12 flex flex-col items-center gap-1.5 mb-14 z-20">
+                    <div className="h-4 w-[90%] rounded-md bg-[#16223f]/80 animate-pulse-skeleton" />
+                    <div className="h-4 w-[65%] rounded-md bg-[#16223f]/80 animate-pulse-skeleton" />
+                  </div>
+
+                  {/* Floating Action buttons on the right side */}
+                  <div className="absolute right-3.5 bottom-20 flex flex-col items-center gap-4.5 z-20">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="h-8.5 w-8.5 rounded-full bg-[#16223f]/80 animate-pulse-skeleton" />
+                      <div className="h-2 w-5 rounded bg-[#16223f]/80 animate-pulse-skeleton" />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="h-8.5 w-8.5 rounded-full bg-[#16223f]/80 animate-pulse-skeleton" />
+                      <div className="h-2 w-4 rounded bg-[#16223f]/80 animate-pulse-skeleton" />
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="h-8.5 w-8.5 rounded-full bg-[#16223f]/80 animate-pulse-skeleton" />
+                      <div className="h-2 w-4 rounded bg-[#16223f]/80 animate-pulse-skeleton" />
+                    </div>
+                  </div>
+
+                  {/* Left user info shape */}
+                  <div className="absolute left-3.5 bottom-6 flex flex-col gap-2 z-20 w-[60%]">
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-7 w-7 rounded-full bg-[#16223f]/80 animate-pulse-skeleton" />
+                      <div className="h-3 w-16 rounded bg-[#16223f]/80 animate-pulse-skeleton" />
+                    </div>
+                    <div className="h-2.5 w-full rounded bg-[#16223f]/80 animate-pulse-skeleton" />
+                    <div className="h-2.5 w-[80%] rounded bg-[#16223f]/80 animate-pulse-skeleton" />
+                  </div>
+
+                  {/* Bottom play bar skeleton */}
+                  <div className="absolute bottom-0 inset-x-0 h-1 bg-slate-900/60 z-20">
+                    <div className="h-full bg-cyan-500/80 transition-all duration-300" style={{ width: `${loadingProgress}%` }} />
+                  </div>
                 </div>
               )}
 

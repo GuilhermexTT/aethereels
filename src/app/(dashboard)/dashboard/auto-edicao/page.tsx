@@ -20,9 +20,16 @@ import {
   Trash2, 
   Sliders, 
   FileVideo,
+  Shield,
+  Zap,
+  Lock,
+  Folder,
+  Search,
+  Clapperboard,
   Heart,
   MessageCircle,
-  Share2
+  Share2,
+  Target
 } from 'lucide-react';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -504,154 +511,202 @@ export default function AutoEdicaoPage() {
       {/* ESTADO 1: TELA DE UPLOAD (PORTA DE ENTRADA) */}
       {step === 'upload' && (
         <div className="grid grid-cols-12 gap-8 items-stretch flex-1 min-h-0">
-          {/* Esquerda: Upload Drag & Drop (Todo o container é a zona de drag and drop) */}
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            className={`col-span-12 lg:col-span-8 flex flex-col justify-center items-center gap-6 bg-[#060a13]/30 border-2 border-dashed rounded-3xl p-8 max-h-[550px] h-full min-h-0 cursor-pointer transition-all duration-300 relative overflow-hidden self-center max-w-2xl mx-auto w-full group/upload-zone ${
-              dragActive
-                ? 'border-purple-500 bg-purple-500/5 shadow-[0_0_30px_rgba(168,85,247,0.15)] scale-[1.005]'
-                : 'border-[#1e2d4a]/50 hover:border-cyan-500/50 hover:bg-[#060a13]/50 shadow-md shadow-blue-500/2'
-            }`}
-          >
-            {/* Efeito Glow Radial Esfumaçado no fundo */}
-            <div 
-              className="absolute pointer-events-none z-0 opacity-40 blur-[80px] transition-all duration-500 group-hover/upload-zone:opacity-60"
-              style={{
-                width: '280px',
-                height: '280px',
-                background: 'radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, rgba(59, 130, 246, 0.1) 50%, transparent 100%)',
-                left: '50%',
-                top: '50%',
-                transform: 'translate(-50%, -50%)'
-              }}
-            />
+          {/* Esquerda: Container principal do upload */}
+          <div className="col-span-12 lg:col-span-8 flex flex-col h-full max-h-[580px] bg-[#060a13] border border-blue-500/80 shadow-[0_0_20px_rgba(59,130,246,0.12)] rounded-[2rem] p-6 relative overflow-hidden self-center w-full min-h-0 justify-between transition-all duration-300">
+            {/* Top header area */}
+            <div className="flex flex-col text-center mt-2 shrink-0">
+              <div className="flex justify-center mb-3">
+                <span className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full uppercase tracking-wider select-none">
+                  Passo 1 de 3
+                </span>
+              </div>
+              <h2 className="text-2xl font-black text-white tracking-tight uppercase">
+                Importe seu vídeo bruto
+              </h2>
+              <p className="text-[11px] text-slate-450 max-w-md mx-auto leading-normal mt-1.5">
+                Envie seu vídeo de até 60 segundos e nossa IA cuidará do resto.<br />
+                Você poderá revisar e editar tudo antes de finalizar.
+              </p>
+            </div>
 
-            <input 
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept="video/*"
-              onChange={handleFileChange}
-            />
+            {/* Middle Drag & Drop Area */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+              className={`flex-1 flex flex-col justify-center items-center gap-4 bg-[#03060c]/40 border-2 border-dashed rounded-3xl p-6 my-5 cursor-pointer transition-all duration-300 relative overflow-hidden ${
+                dragActive
+                  ? 'border-purple-500 bg-purple-500/5 shadow-[0_0_30px_rgba(168,85,247,0.15)] scale-[1.002]'
+                  : 'border-[#1e2d4a]/50 hover:border-cyan-500/35 hover:bg-[#060a13]/50'
+              }`}
+            >
+              {/* Efeito Glow Radial Esfumaçado no fundo */}
+              <div 
+                className="absolute pointer-events-none z-0 opacity-40 blur-[80px] transition-all duration-500"
+                style={{
+                  width: '240px',
+                  height: '240px',
+                  background: 'radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(59, 130, 246, 0.08) 50%, transparent 100%)',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)'
+                }}
+              />
 
-            <div className="z-10 text-center flex flex-col items-center gap-5 max-w-md">
-              {/* Ícone minimalista com background translúcido e glow */}
-              <div className="h-14 w-14 rounded-full bg-[#080d19]/80 border border-blue-500/30 flex items-center justify-center text-cyan-400 shadow-xl transition-all duration-300 group-hover/upload-zone:scale-110 group-hover/upload-zone:border-purple-500/50 group-hover/upload-zone:text-purple-400 relative">
-                <div className="absolute inset-0 rounded-full bg-cyan-400/10 blur-[8px] group-hover/upload-zone:bg-purple-500/20" />
-                <Upload className="h-5 w-5 z-10" />
+              <input 
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept="video/*"
+                onChange={handleFileChange}
+              />
+
+              <div className="z-10 text-center flex flex-col items-center gap-4">
+                {/* Icon Circle */}
+                <div className="h-14 w-14 rounded-full bg-gradient-to-b from-[#1c183a] to-[#0d0924] border border-[#7c3aed]/30 flex items-center justify-center text-purple-400 shadow-xl transition-all duration-300 relative">
+                  <Upload className="h-5 w-5" />
+                </div>
+
+                <div className="flex flex-col gap-1 items-center">
+                  <span className="text-xs font-bold text-slate-200 uppercase tracking-wide">
+                    Arraste e solte seu vídeo aqui
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-bold">ou</span>
+                </div>
+
+                {/* Styled Button */}
+                <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#6366f1] to-[#a855f7] hover:opacity-95 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-purple-500/20 active:scale-95 transition-all select-none">
+                  <Folder className="h-3.5 w-3.5" />
+                  Selecionar arquivo
+                </div>
+
+                <span className="text-[9px] text-slate-550 font-semibold tracking-wide mt-2">
+                  MP4, MOV ou WEBM • Até 60 segundos • Máx. 1GB
+                </span>
+              </div>
+            </div>
+
+            {/* Bottom Row Panel */}
+            <div className="w-full bg-[#040812]/50 border border-[#15233c]/60 rounded-2xl p-3 px-5 flex justify-between items-center gap-4 shrink-0 mb-1">
+              {/* Feature 1 */}
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                  <Shield className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="text-[10px] font-bold text-slate-200">Seus arquivos estão seguros</span>
+                  <span className="text-[8px] text-slate-500 font-medium">Criptografia de ponta a ponta</span>
+                </div>
               </div>
 
-              <div className="flex flex-col gap-2">
-                <h2 className="text-xl lg:text-2xl font-extrabold text-white tracking-tight uppercase">
-                  Importe seu Vídeo Bruto
-                </h2>
-                <p className="text-[10px] text-slate-400 max-w-xs mx-auto leading-normal">
-                  Arraste e solte o seu vídeo bruto falando (até 60s) aqui ou clique para selecionar. A IA fará todo o resto de forma automática.
-                </p>
+              {/* Feature 2 */}
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                  <Zap className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="text-[10px] font-bold text-slate-200">Processamento rápido</span>
+                  <span className="text-[8px] text-slate-500 font-medium">Sua edição em poucos minutos</span>
+                </div>
               </div>
 
-              {/* Badges explicativos minimalistas em fileira de suporte */}
-              <div className="flex gap-3 mt-1">
-                <span className="text-[8px] font-bold text-slate-500 bg-[#070c17]/60 border border-slate-900 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  ⚡ Auto-Legendas
-                </span>
-                <span className="text-[8px] font-bold text-slate-500 bg-[#070c17]/60 border border-slate-900 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  🔎 Zoom
-                </span>
-                <span className="text-[8px] font-bold text-slate-500 bg-[#070c17]/60 border border-slate-900 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  🎥 B-Rolls
-                </span>
+              {/* Feature 3 */}
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="text-[10px] font-bold text-slate-200">Você mantém o controle</span>
+                  <span className="text-[8px] text-slate-500 font-medium">Revise e edite antes de exportar</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Direita: Mockup Informativo e Descrições (Dentro de Card Premium com Borda Azul) */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col h-full max-h-[550px] self-center min-h-0">
-            <div className="flex-1 min-h-0 w-full border border-blue-500/30 bg-[#060a13] shadow-[0_0_25px_rgba(59,130,246,0.06)] rounded-[2rem] p-5 flex flex-col items-center justify-between gap-3">
-              <h2 className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400 w-full text-left shrink-0">
-                Visualização em Tempo Real
-              </h2>
+          {/* Direita: Recursos da IA e Benefícios (Sem Celular, Conforme Mockup) */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col h-full max-h-[580px] bg-[#060a13] border border-blue-500/80 shadow-[0_0_20px_rgba(59,130,246,0.12)] rounded-[2rem] p-6 relative overflow-hidden self-center w-full min-h-0 justify-between gap-4 transition-all duration-300">
+            
+            {/* Header */}
+            <div className="flex flex-col gap-1 w-full text-left mt-2 shrink-0">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-pink-400" />
+                <h2 className="text-base font-bold text-white tracking-wide">
+                  O que a IA fará pelo seu vídeo
+                </h2>
+              </div>
+              <p className="text-[11px] text-slate-500 font-semibold pl-7">
+                Recursos inteligentes que vão transformar seu conteúdo.
+              </p>
+            </div>
 
-              <div className="flex-1 min-h-0 w-full flex items-center justify-center">
-                {/* iPhone Mockup */}
-                <div className="w-[215px] aspect-[9/16] rounded-[2rem] border-[6px] border-slate-950 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col justify-end relative shrink-0 animate-fade-in">
-                  {/* Fake Status Bar */}
-                  <div className="absolute top-2.5 inset-x-4 flex justify-between items-center text-[7.5px] font-bold text-slate-500/80 z-45 pointer-events-none select-none">
-                    <span>23:25</span>
-                    <div className="flex items-center gap-1.5">
-                      <span>📶</span>
-                      <span>🔋</span>
-                    </div>
-                  </div>
-
-                  {/* Dynamic Island / Notch */}
-                  <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-16 h-3 bg-black rounded-full z-45" />
-
-                  {/* Player Waiting Screen */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-[#0b1424] via-[#050b14] to-[#010408]">
-                    {/* Abstrato Blur Glow de fundo */}
-                    <div className="w-24 h-24 rounded-full bg-blue-500/5 blur-2xl absolute" />
-                    
-                    {/* Legenda de impacto central */}
-                    <div className="z-10 px-3 text-center">
-                      <h1 
-                        className="text-[9.5px] font-black tracking-wider uppercase mb-1 drop-shadow-md animate-pulse"
-                        style={{
-                          fontFamily: 'Montserrat, sans-serif',
-                          color: neonColor || '#FFD700',
-                          textShadow: '0 0 10px rgba(255,215,0,0.2)'
-                        }}
-                      >
-                        [ AGUARDANDO VÍDEO... ]
-                      </h1>
-                      <p className="text-[7px] font-bold text-slate-600 uppercase tracking-widest mt-1">
-                        Envie um arquivo para iniciar a edição
-                      </p>
-                    </div>
-
-                    {/* Simulated reels side icons in translucent outline for mockup vibe */}
-                    <div className="absolute right-2.5 bottom-12 flex flex-col items-center gap-3.5 opacity-20">
-                      <div className="h-5.5 w-5.5 rounded-full border border-white flex items-center justify-center text-white" />
-                      <div className="h-5.5 w-5.5 rounded-full border border-white flex items-center justify-center text-white" />
-                      <div className="h-5.5 w-5.5 rounded-full border border-white flex items-center justify-center text-white" />
-                    </div>
-                  </div>
-
-                  {/* Bottom Home Indicator Pill */}
-                  <div className="w-16 h-0.5 bg-white/20 rounded-full mx-auto mt-auto z-45" />
+            {/* Cards explicativos */}
+            <div className="w-full flex flex-col gap-3 shrink-0">
+              {/* Card 1 */}
+              <div className="bg-[#040812]/50 border border-slate-800/60 rounded-xl p-3 flex gap-3.5 items-center hover:border-slate-700/80 transition-colors">
+                <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 font-black text-xs select-none">
+                  CC
+                </div>
+                <div className="flex flex-col text-left">
+                  <h4 className="text-xs font-bold text-slate-200">Legendas Automáticas</h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5 leading-normal">Legenda palavra por palavra com cores neon dinâmicas e efeitos visuais que prendem atenção.</p>
                 </div>
               </div>
 
-              {/* Cards explicativos abaixo do celular */}
-              <div className="w-full max-w-[225px] flex flex-col gap-2.5 shrink-0">
-                <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-2.5 flex gap-2.5 items-start">
-                  <span className="text-xs bg-cyan-500/10 text-cyan-400 p-1.5 rounded-lg">💬</span>
-                  <div>
-                    <h4 className="text-[10px] font-bold text-slate-200">Legendas Automáticas</h4>
-                    <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Legenda palavra por palavra com cores neon dinâmicas e efeitos visuais.</p>
-                  </div>
+              {/* Card 2 */}
+              <div className="bg-[#040812]/50 border border-slate-800/60 rounded-xl p-3 flex gap-3.5 items-center hover:border-slate-700/80 transition-colors">
+                <div className="h-9 w-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                  <Search className="h-4 w-4" />
                 </div>
-
-                <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-2.5 flex gap-2.5 items-start">
-                  <span className="text-xs bg-purple-500/10 text-purple-400 p-1.5 rounded-lg">🔎</span>
-                  <div>
-                    <h4 className="text-[10px] font-bold text-slate-200">Zoom Inteligente</h4>
-                    <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Cortes de câmera e enquadramentos dinâmicos nos momentos cruciais.</p>
-                  </div>
-                </div>
-
-                <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-2.5 flex gap-2.5 items-start">
-                  <span className="text-xs bg-indigo-500/10 text-indigo-400 p-1.5 rounded-lg">⚡</span>
-                  <div>
-                    <h4 className="text-[10px] font-bold text-slate-200">Inserção de B-Rolls</h4>
-                    <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Imagens cinemáticas e vídeos de apoio inseridos sobre falas importantes.</p>
-                  </div>
+                <div className="flex flex-col text-left">
+                  <h4 className="text-xs font-bold text-slate-200">Zoom Inteligente</h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5 leading-normal">Cortes de câmera e enquadramentos dinâmicos nos momentos cruciais para manter o foco.</p>
                 </div>
               </div>
+
+              {/* Card 3 */}
+              <div className="bg-[#040812]/50 border border-slate-800/60 rounded-xl p-3 flex gap-3.5 items-center hover:border-slate-700/80 transition-colors">
+                <div className="h-9 w-9 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                  <Clapperboard className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <h4 className="text-xs font-bold text-slate-200">Inserção de B-Rolls</h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5 leading-normal">Imagens cinematográficas e vídeos de apoio inseridos sobre falas importantes.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Painel "Por que usar a IA?" */}
+            <div className="w-full bg-[#040812]/50 border border-slate-800/60 rounded-2xl p-4 flex flex-col gap-3 text-left">
+              <h3 className="text-xs font-extrabold text-purple-400 uppercase tracking-wider">
+                Por que usar a IA?
+              </h3>
+              <div className="flex flex-col gap-2.5">
+                {/* Benefício 1 */}
+                <div className="flex items-center gap-3">
+                  <Zap className="h-4 w-4 text-purple-400 shrink-0" />
+                  <span className="text-[11px] text-slate-350 font-semibold">Economize tempo na edição</span>
+                </div>
+                {/* Benefício 2 */}
+                <div className="flex items-center gap-3">
+                  <Target className="h-4 w-4 text-purple-400 shrink-0" />
+                  <span className="text-[11px] text-slate-350 font-semibold">Resultados profissionais em minutos</span>
+                </div>
+                {/* Benefício 3 */}
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-4 w-4 text-purple-400 shrink-0" />
+                  <span className="text-[11px] text-slate-350 font-semibold">Conteúdo mais envolvente e moderno</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Lock Footer */}
+            <div className="border border-slate-850 bg-[#040812]/20 rounded-xl p-2.5 flex items-center justify-center gap-2 w-full shrink-0 mb-1 select-none">
+              <Lock className="h-3.5 w-3.5 text-slate-500" />
+              <span className="text-[10px] text-slate-500 font-bold tracking-wide">
+                Você poderá personalizar tudo na próxima etapa.
+              </span>
             </div>
           </div>
         </div>
@@ -678,6 +733,42 @@ export default function AutoEdicaoPage() {
               className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-indigo-500 transition-all duration-500 rounded-full"
               style={{ width: `${(processingStage + 1) * 20}%` }}
             />
+          </div>
+
+          {/* Visual Step Checklist */}
+          <div className="w-full max-w-xs bg-[#040812]/50 border border-[#16223f]/50 rounded-2xl p-5 flex flex-col gap-3 select-none text-left">
+            {[
+              { id: 0, label: 'Upload seguro do vídeo' },
+              { id: 1, label: 'Isolamento de frequências de voz' },
+              { id: 2, label: 'Transcrição automática Whisper v3' },
+              { id: 3, label: 'Geração de timestamps por palavra' },
+              { id: 4, label: 'Corte automático de silêncios' }
+            ].map((s) => {
+              const isCompleted = processingStage > s.id;
+              const isActive = processingStage === s.id;
+              return (
+                <div key={s.id} className="flex items-center gap-3">
+                  <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] border transition-all ${
+                    isCompleted 
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-bold' 
+                      : isActive 
+                        ? 'bg-blue-500/10 border-blue-500/40 text-blue-400 animate-pulse'
+                        : 'bg-slate-950/60 border-slate-800 text-slate-600'
+                  }`}>
+                    {isCompleted ? '✓' : isActive ? '●' : '○'}
+                  </div>
+                  <span className={`text-[11px] font-semibold transition-colors ${
+                    isCompleted 
+                      ? 'text-slate-550 line-through decoration-slate-850' 
+                      : isActive 
+                        ? 'text-blue-400 font-bold' 
+                        : 'text-slate-600'
+                  }`}>
+                    {s.label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -776,7 +867,15 @@ export default function AutoEdicaoPage() {
                   <div className="grid grid-cols-3 gap-6">
                     {/* 1. Cor Neon */}
                     <div className="flex flex-col gap-2">
-                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Cor de Destaque</span>
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide flex items-center gap-1">
+                        Cor de Destaque
+                        <span className="group relative inline-block cursor-help text-slate-550">
+                          <span className="text-[9px] bg-slate-950 border border-slate-800/80 rounded-full h-3.5 w-3.5 flex items-center justify-center">?</span>
+                          <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-40 rounded-xl bg-slate-950 border border-[#16223f]/80 p-2.5 text-[9px] text-slate-350 font-medium leading-normal opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 text-left shadow-2xl normal-case">
+                            A cor da palavra atualmente falada na narração.
+                          </span>
+                        </span>
+                      </span>
                       <div className="flex items-center gap-2">
                         {[
                           { name: 'Gold', val: '#FFD700', bg: 'bg-[#FFD700]' },
@@ -789,7 +888,7 @@ export default function AutoEdicaoPage() {
                             key={c.val}
                             onClick={() => setNeonColor(c.val)}
                             className={`h-6 w-6 rounded-full ${c.bg} transition-all border ${
-                              neonColor === c.val ? 'ring-2 ring-indigo-500 scale-110 border-white' : 'border-slate-800 hover:scale-105'
+                              neonColor === c.val ? 'ring-2 ring-indigo-500 scale-110 border-white' : 'border-slate-800 hover:scale-105 cursor-pointer'
                             }`}
                             title={c.name}
                           />
@@ -799,16 +898,24 @@ export default function AutoEdicaoPage() {
 
                     {/* 2. Tamanho da Legenda */}
                     <div className="flex flex-col gap-2">
-                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Tamanho</span>
-                      <div className="flex p-0.5 rounded-lg bg-slate-950 border border-slate-900">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide flex items-center gap-1">
+                        Tamanho
+                        <span className="group relative inline-block cursor-help text-slate-550">
+                          <span className="text-[9px] bg-slate-950 border border-slate-800/80 rounded-full h-3.5 w-3.5 flex items-center justify-center">?</span>
+                          <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-40 rounded-xl bg-slate-950 border border-[#16223f]/80 p-2.5 text-[9px] text-slate-350 font-medium leading-normal opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 text-left shadow-2xl normal-case">
+                            A escala das palavras na tela vertical do player.
+                          </span>
+                        </span>
+                      </span>
+                      <div className="flex p-0.5 rounded-lg bg-slate-950 border border-[#16223f]/40">
                         {(['small', 'medium', 'large'] as const).map(size => (
                           <button
                             key={size}
                             onClick={() => setTextSize(size)}
-                            className={`flex-1 py-1 text-[9px] font-bold rounded-md transition-all ${
+                            className={`flex-1 py-1 text-[9px] font-bold rounded-md transition-all cursor-pointer ${
                               textSize === size 
                                 ? 'bg-[#161328] border border-[#7c3aed]/40 text-white' 
-                                : 'text-slate-400 hover:text-slate-200'
+                                : 'text-slate-555 hover:text-slate-300'
                             }`}
                           >
                             {size === 'small' ? 'Peq' : size === 'medium' ? 'Méd' : 'Grd'}
@@ -819,16 +926,24 @@ export default function AutoEdicaoPage() {
 
                     {/* 3. Tipo de Fonte */}
                     <div className="flex flex-col gap-2">
-                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Tipo de Fonte</span>
-                      <div className="flex p-0.5 rounded-lg bg-slate-950 border border-slate-900">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide flex items-center gap-1">
+                        Tipo de Fonte
+                        <span className="group relative inline-block cursor-help text-slate-550">
+                          <span className="text-[9px] bg-slate-950 border border-slate-800/80 rounded-full h-3.5 w-3.5 flex items-center justify-center">?</span>
+                          <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-40 rounded-xl bg-slate-950 border border-[#16223f]/80 p-2.5 text-[9px] text-slate-350 font-medium leading-normal opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 text-left shadow-2xl normal-case">
+                            A tipografia das legendas sobrepostas.
+                          </span>
+                        </span>
+                      </span>
+                      <div className="flex p-0.5 rounded-lg bg-slate-950 border border-[#16223f]/40">
                         {['Montserrat', 'Poppins', 'Inter', 'Impact'].map(f => (
                           <button
                             key={f}
                             onClick={() => setFontFamily(f)}
-                            className={`flex-1 py-1 text-[9px] font-bold rounded-md transition-all ${
+                            className={`flex-1 py-1 text-[9px] font-bold rounded-md transition-all cursor-pointer ${
                               fontFamily === f 
                                 ? 'bg-[#161328] border border-[#7c3aed]/40 text-white' 
-                                : 'text-slate-400 hover:text-slate-200'
+                                : 'text-slate-555 hover:text-slate-300'
                             }`}
                           >
                             {f}
@@ -841,8 +956,21 @@ export default function AutoEdicaoPage() {
 
                 {/* Bloco 2: Gerar B-Rolls Inteligentes */}
                 <div className="bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.06)] rounded-2xl p-4 flex flex-col gap-3 shrink-0">
+                  <div className="flex items-center gap-2 border-b border-slate-900/60 pb-2.5">
+                    <Sliders className="h-4.5 w-4.5 text-cyan-400" />
+                    <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1">
+                      Gerador de B-Rolls Inteligente
+                      <span className="group relative inline-block cursor-help text-slate-550">
+                        <span className="text-[9px] bg-slate-950 border border-slate-800/80 rounded-full h-3.5 w-3.5 flex items-center justify-center normal-case font-normal">?</span>
+                        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 rounded-xl bg-slate-950 border border-[#16223f]/80 p-2.5 text-[9px] text-slate-350 font-medium leading-normal opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 text-left shadow-2xl normal-case">
+                          B-Rolls são tomadas secundárias que ilustram o que o narrador está falando, aumentando em até 3x a retenção de atenção do público.
+                        </span>
+                      </span>
+                    </h3>
+                  </div>
+
                   <div className="flex-1">
-                    <p className="text-xs text-slate-300 font-semibold leading-normal">
+                    <p className="text-[11px] text-slate-400 font-semibold leading-normal">
                       {bRollsActive 
                         ? 'Takes B-Roll gerados com IA foram inseridos. Você pode desativar ou regerar a qualquer momento.'
                         : 'Adicione mídias de vídeo cinemáticas sobre as falas mais impactantes do seu vídeo para aumentar a retenção.'
@@ -860,14 +988,14 @@ export default function AutoEdicaoPage() {
                       {bRollsActive && (
                         <button
                           onClick={() => setBRollsActive(false)}
-                          className="px-4 py-3 bg-red-500/10 border border-red-500/30 hover:border-red-400 text-xs font-bold text-red-400 rounded-xl active:scale-95 transition-all"
+                          className="px-4 py-3 bg-red-500/10 border border-red-500/30 hover:border-red-400 text-xs font-bold text-red-400 rounded-xl active:scale-95 transition-all cursor-pointer"
                         >
                           Remover B-Rolls
                         </button>
                       )}
                       <button
                         onClick={handleGenerateBRolls}
-                        className="px-4.5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-xs font-extrabold text-white rounded-xl shadow-lg shadow-indigo-600/10 active:scale-95 transition-all"
+                        className="px-4.5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-xs font-extrabold text-white rounded-xl shadow-lg shadow-indigo-600/10 active:scale-95 transition-all cursor-pointer"
                       >
                         {bRollsActive ? '⚡ Regerar B-Rolls com IA' : '⚡ Gerar B-Rolls e Takes com IA'}
                       </button>
