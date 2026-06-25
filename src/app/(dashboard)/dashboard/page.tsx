@@ -901,11 +901,11 @@ export default function CreationDashboard() {
         </div>
 
         {/* Switcher de Modos: Neon Pills Tabs */}
-        <div className="flex mt-2 select-none">
-          <div className="flex p-1 rounded-full bg-[#060a13] border border-[#15233c]/60 shadow-[0_0_15px_rgba(59,130,246,0.05)]">
+        <div className="flex mt-2 select-none max-w-full">
+          <div className="flex p-0.5 sm:p-1 rounded-full bg-[#060a13] border border-[#15233c]/60 shadow-[0_0_15px_rgba(59,130,246,0.05)] max-w-full overflow-x-auto scrollbar-none">
             <button
               onClick={() => setGenerationMode('prompt')}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all duration-300 whitespace-nowrap ${
                 generationMode === 'prompt'
                   ? 'bg-gradient-to-r from-blue-500/10 to-indigo-500/10 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
                   : 'text-slate-400 hover:text-slate-200 border border-transparent'
@@ -916,7 +916,7 @@ export default function CreationDashboard() {
             </button>
             <button
               onClick={() => setGenerationMode('consultant')}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all duration-300 whitespace-nowrap ${
                 generationMode === 'consultant'
                   ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-400 border border-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
                   : 'text-slate-400 hover:text-slate-200 border border-transparent'
@@ -1082,7 +1082,7 @@ export default function CreationDashboard() {
           </div>
 
           {/* Opções Avançadas da IA */}
-          <div className="grid grid-cols-3 gap-3.5 bg-[#040812]/50 border border-[#16223f]/50 rounded-2xl p-3.5 select-none">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 bg-[#040812]/50 border border-[#16223f]/50 rounded-2xl p-3.5 select-none">
             {/* Idioma */}
             <div ref={langRef} className="flex flex-col gap-1.5 relative">
               <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">

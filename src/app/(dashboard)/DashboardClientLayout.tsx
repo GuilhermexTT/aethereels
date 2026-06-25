@@ -110,7 +110,7 @@ function TopHeader({ onMenuOpen }: { onMenuOpen: () => void }) {
   const { credits } = useDashboard();
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-[#02050c]/80 backdrop-blur-md px-6 py-4 flex items-center justify-between border-b border-[#15233c]/20">
+    <header className="sticky top-0 z-40 w-full bg-[#02050c]/80 backdrop-blur-md px-4 py-3 md:px-6 md:py-4 flex items-center justify-between border-b border-[#15233c]/20">
       {/* Hamburger menu for mobile only */}
       <button 
         onClick={onMenuOpen}
@@ -121,7 +121,7 @@ function TopHeader({ onMenuOpen }: { onMenuOpen: () => void }) {
       </button>
 
       {/* Right actions */}
-      <div className="flex items-center gap-4 ml-auto">
+      <div className="flex items-center gap-2 sm:gap-4 ml-auto">
         {/* Credits Badge (hidden on extra small screens) */}
         <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-[#15233c]/60 bg-[#070c17]/60 px-4 py-2 text-xs font-semibold text-slate-300 select-none">
           <span className="text-blue-400">⚡</span>
@@ -130,27 +130,27 @@ function TopHeader({ onMenuOpen }: { onMenuOpen: () => void }) {
         </div>
 
         {/* Upgrade Button */}
-        <button className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#6366f1] to-[#a855f7] hover:opacity-95 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-purple-500/20 active:scale-95 transition-all">
-          <Crown className="h-3.5 w-3.5 fill-current text-white" />
+        <button className="flex items-center gap-1 sm:gap-1.5 rounded-xl bg-gradient-to-r from-[#6366f1] to-[#a855f7] hover:opacity-95 px-3 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-xs font-bold text-white shadow-lg shadow-purple-500/20 active:scale-95 transition-all">
+          <Crown className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-current text-white" />
           Upgrade
         </button>
 
         {/* Bell Notifications */}
-        <button className="relative rounded-xl p-2 bg-[#070c17]/60 border border-[#15233c]/60 text-slate-400 hover:bg-[#0c1426] hover:text-white transition-all">
-          <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-[#a855f7] ring-2 ring-[#02050c]"></span>
-          <Bell className="h-4.5 w-4.5" />
+        <button className="relative rounded-xl p-1.5 sm:p-2 bg-[#070c17]/60 border border-[#15233c]/60 text-slate-400 hover:bg-[#0c1426] hover:text-white transition-all">
+          <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-[#a855f7] ring-2 ring-[#02050c]"></span>
+          <Bell className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
         </button>
 
         {/* Profile Avatar */}
-        <div className="flex items-center gap-2 pl-2 border-l border-slate-800 cursor-pointer group">
-          <div className="h-8 w-8 rounded-full overflow-hidden border border-slate-700 group-hover:border-blue-400/50 transition-colors">
+        <div className="flex items-center gap-1.5 sm:gap-2 pl-1.5 sm:pl-2 border-l border-slate-800 cursor-pointer group">
+          <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full overflow-hidden border border-slate-700 group-hover:border-blue-400/50 transition-colors">
             <img
               src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80"
               alt="Perfil do Usuário"
               className="h-full w-full object-cover"
             />
           </div>
-          <ChevronDown className="h-3.5 w-3.5 text-slate-500 group-hover:text-slate-300 transition-colors" />
+          <ChevronDown className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-500 group-hover:text-slate-300 transition-colors" />
         </div>
       </div>
     </header>
@@ -197,7 +197,7 @@ export default function DashboardClientLayout({
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
           <TopHeader onMenuOpen={() => setIsSidebarOpen(true)} />
-          <main className="flex-1 overflow-y-auto px-6 py-6 md:px-8 md:py-8" role="main" id="main-content">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 sm:px-6 md:px-8 md:py-8" role="main" id="main-content">
             {children}
           </main>
         </div>
