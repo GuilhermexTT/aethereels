@@ -209,7 +209,7 @@ export default function AutoEdicaoPage() {
     }
   };
 
-  // Upload real para o S3 via API interna
+  // Upload real para o Supabase Storage
   const handleVideoUpload = async (file: File) => {
     // Validar tipo de vídeo e tamanho aproximado
     if (!file.type.startsWith('video/')) {
@@ -224,24 +224,25 @@ export default function AutoEdicaoPage() {
     setProcessingLog('Fazendo upload seguro para o storage do Aether...');
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `auto-edicao/${userId || 'anon'}/${Date.now()}.${fileExt}`;
 
-      const response = await fetch('/api/upload/s3', {
-        method: 'POST',
-        body: formData,
-      });
+      const { data, error } = await supabase.storage
+        .from('editor_temp_uploads')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
 
-      if (!response.ok) {
-        throw new Error('Falha ao subir vídeo para o S3.');
+      if (error) {
+        throw new Error(`Falha no upload para o Supabase Storage: ${error.message}`);
       }
 
-      const data = await response.json();
-      if (!data.success || !data.url) {
-        throw new Error(data.error || 'Erro desconhecido no servidor.');
-      }
+      const { data: { publicUrl } } = supabase.storage
+        .from('editor_temp_uploads')
+        .getPublicUrl(fileName);
 
-      setVideoUrl(data.url);
+      setVideoUrl(publicUrl);
       setUploading(false);
       
       // Iniciar a simulação de transcrição baseada em IA
