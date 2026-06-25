@@ -11,6 +11,7 @@ import {
   Maximize2,
   Clock,
   ChevronRight,
+  ChevronDown,
   Languages,
   Flame,
   Hourglass,
@@ -142,6 +143,30 @@ export default function CreationDashboard() {
   const [recommendedPrompt, setRecommendedPrompt] = useState<string | null>(null);
   const [chatId, setChatId] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const [isLangOpen, setIsLangOpen] = useState(false);
+  const [isToneOpen, setIsToneOpen] = useState(false);
+  const [isDurationOpen, setIsDurationOpen] = useState(false);
+
+  const langRef = useRef<HTMLDivElement>(null);
+  const toneRef = useRef<HTMLDivElement>(null);
+  const durationRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(event.target as Node)) {
+        setIsLangOpen(false);
+      }
+      if (toneRef.current && !toneRef.current.contains(event.target as Node)) {
+        setIsToneOpen(false);
+      }
+      if (durationRef.current && !durationRef.current.contains(event.target as Node)) {
+        setIsDurationOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     let id = localStorage.getItem('aether_chat_id');
@@ -1059,70 +1084,152 @@ export default function CreationDashboard() {
           {/* Opções Avançadas da IA */}
           <div className="grid grid-cols-3 gap-3.5 bg-[#040812]/50 border border-[#16223f]/50 rounded-2xl p-3.5 select-none">
             {/* Idioma */}
-            <div className="flex flex-col gap-1.5">
+            <div ref={langRef} className="flex flex-col gap-1.5 relative">
               <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
                 Idioma
-                <span className="group relative inline-block cursor-help text-slate-550" aria-label="Ajuda sobre Idioma">
+                <span className="group relative inline-block cursor-help text-slate-555" aria-label="Ajuda sobre Idioma">
                   <span className="text-[9px] bg-slate-950 border border-slate-800/80 rounded-full h-3.5 w-3.5 flex items-center justify-center">?</span>
                   <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 rounded-xl bg-slate-950 border border-[#16223f]/80 p-2.5 text-[9px] text-slate-350 font-medium leading-normal opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 text-left shadow-2xl">
                     O idioma no qual a inteligência artificial criará o roteiro e narrará a voz do vídeo.
                   </span>
                 </span>
               </label>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value as LanguageType)}
-                className="w-full bg-slate-950/60 border border-[#16223f]/40 hover:border-slate-800 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-200 outline-none transition-colors cursor-pointer"
+              <button
+                type="button"
+                onClick={() => setIsLangOpen(!isLangOpen)}
+                className="w-full bg-slate-950/60 border border-[#16223f]/40 hover:border-slate-800 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-200 outline-none transition-colors cursor-pointer flex items-center justify-between"
               >
-                <option value="pt">🇧🇷 Português</option>
-                <option value="en">🇺🇸 Inglês</option>
-                <option value="es">🇪🇸 Espanhol</option>
-              </select>
+                <span>
+                  {language === 'pt' ? '🇧🇷 Português' : language === 'en' ? '🇺🇸 Inglês' : '🇪🇸 Espanhol'}
+                </span>
+                <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform duration-200 ${isLangOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isLangOpen && (
+                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-slate-950 border border-[#16223f] rounded-xl overflow-hidden shadow-2xl z-50 py-1">
+                  {[
+                    { value: 'pt', label: '🇧🇷 Português' },
+                    { value: 'en', label: '🇺🇸 Inglês' },
+                    { value: 'es', label: '🇪🇸 Espanhol' }
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        setLanguage(opt.value as LanguageType);
+                        setIsLangOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-xs font-semibold transition-colors cursor-pointer flex items-center justify-between ${
+                        language === opt.value
+                          ? 'bg-indigo-600/20 text-cyan-400'
+                          : 'text-slate-300 hover:bg-slate-900/60 hover:text-white'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {language === opt.value && <span className="text-[10px] text-cyan-400">●</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Tom de voz */}
-            <div className="flex flex-col gap-1.5">
+            <div ref={toneRef} className="flex flex-col gap-1.5 relative">
               <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
                 Tom de voz
-                <span className="group relative inline-block cursor-help text-slate-550" aria-label="Ajuda sobre Tom de voz">
+                <span className="group relative inline-block cursor-help text-slate-555" aria-label="Ajuda sobre Tom de voz">
                   <span className="text-[9px] bg-slate-950 border border-slate-800/80 rounded-full h-3.5 w-3.5 flex items-center justify-center">?</span>
                   <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 rounded-xl bg-slate-950 border border-[#16223f]/80 p-2.5 text-[9px] text-slate-350 font-medium leading-normal opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 text-left shadow-2xl">
                     Adapta a atitude e entonação da voz gerada (ex: enérgico, calmo, vendedor).
                   </span>
                 </span>
               </label>
-              <select
-                value={tone}
-                onChange={(e) => setTone(e.target.value as ToneType)}
-                className="w-full bg-slate-950/60 border border-[#16223f]/40 hover:border-slate-800 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-200 outline-none transition-colors cursor-pointer"
+              <button
+                type="button"
+                onClick={() => setIsToneOpen(!isToneOpen)}
+                className="w-full bg-slate-950/60 border border-[#16223f]/40 hover:border-slate-800 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-200 outline-none transition-colors cursor-pointer flex items-center justify-between"
               >
-                <option value="envolvente">Envolvente</option>
-                <option value="profissional">Profissional</option>
-                <option value="humorado">Humorado</option>
-                <option value="urgente">Urgente</option>
-              </select>
+                <span className="capitalize">{tone}</span>
+                <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform duration-200 ${isToneOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isToneOpen && (
+                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-slate-950 border border-[#16223f] rounded-xl overflow-hidden shadow-2xl z-50 py-1">
+                  {[
+                    { value: 'envolvente', label: 'Envolvente' },
+                    { value: 'profissional', label: 'Profissional' },
+                    { value: 'humorado', label: 'Humorado' },
+                    { value: 'urgente', label: 'Urgente' }
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        setTone(opt.value as ToneType);
+                        setIsToneOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-xs font-semibold transition-colors cursor-pointer flex items-center justify-between ${
+                        tone === opt.value
+                          ? 'bg-indigo-600/20 text-cyan-400'
+                          : 'text-slate-300 hover:bg-slate-900/60 hover:text-white'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {tone === opt.value && <span className="text-[10px] text-cyan-400">●</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Duração */}
-            <div className="flex flex-col gap-1.5">
+            <div ref={durationRef} className="flex flex-col gap-1.5 relative">
               <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
                 Duração
-                <span className="group relative inline-block cursor-help text-slate-550" aria-label="Ajuda sobre Duração">
+                <span className="group relative inline-block cursor-help text-slate-555" aria-label="Ajuda sobre Duração">
                   <span className="text-[9px] bg-slate-950 border border-slate-800/80 rounded-full h-3.5 w-3.5 flex items-center justify-center">?</span>
                   <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 rounded-xl bg-slate-950 border border-[#16223f]/80 p-2.5 text-[9px] text-slate-350 font-medium leading-normal opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 text-left shadow-2xl">
                     Define o limite de tempo aproximado para a narração e roteiro gerados pela IA.
                   </span>
                 </span>
               </label>
-              <select
-                value={duration}
-                onChange={(e) => setDuration(e.target.value as DurationType)}
-                className="w-full bg-slate-950/60 border border-[#16223f]/40 hover:border-slate-800 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-200 outline-none transition-colors cursor-pointer"
+              <button
+                type="button"
+                onClick={() => setIsDurationOpen(!isDurationOpen)}
+                className="w-full bg-slate-950/60 border border-[#16223f]/40 hover:border-slate-800 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-200 outline-none transition-colors cursor-pointer flex items-center justify-between"
               >
-                <option value="30s">30 segundos</option>
-                <option value="60s">60 segundos</option>
-                <option value="90s">90 segundos</option>
-              </select>
+                <span>
+                  {duration === '30s' ? '30 segundos' : duration === '60s' ? '60 segundos' : '90 segundos'}
+                </span>
+                <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform duration-200 ${isDurationOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isDurationOpen && (
+                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-slate-950 border border-[#16223f] rounded-xl overflow-hidden shadow-2xl z-50 py-1">
+                  {[
+                    { value: '30s', label: '30 segundos' },
+                    { value: '60s', label: '60 segundos' },
+                    { value: '90s', label: '90 segundos' }
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        setDuration(opt.value as DurationType);
+                        setIsDurationOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-xs font-semibold transition-colors cursor-pointer flex items-center justify-between ${
+                        duration === opt.value
+                          ? 'bg-indigo-600/20 text-cyan-400'
+                          : 'text-slate-300 hover:bg-slate-900/60 hover:text-white'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {duration === opt.value && <span className="text-[10px] text-cyan-400">●</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
