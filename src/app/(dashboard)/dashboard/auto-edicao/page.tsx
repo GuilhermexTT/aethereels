@@ -1218,7 +1218,7 @@ export default function AutoEdicaoPage() {
               {/* Mockup do Celular */}
               <div 
                 ref={phoneContainerRef}
-                className={`aspect-[9/16] rounded-[2.5rem] border-[8px] border-slate-950 bg-[#050b14] overflow-hidden shadow-[0_25px_50px_-12px_rgba(0,0,0,0.85),0_0_20px_rgba(59,130,246,0.1)] flex flex-col justify-end ${
+                className={`aspect-[9/16] rounded-[2.5rem] border-[8px] border-slate-950 bg-[#050b14] overflow-hidden shadow-[0_8px_16px_rgba(0,0,0,0.6),0_0_10px_rgba(59,130,246,0.15)] flex flex-col justify-end ${
                   zoomState === 'idle' ? 'relative w-full h-full z-25' : ''
                 }`}
                 style={transitionStyle}
