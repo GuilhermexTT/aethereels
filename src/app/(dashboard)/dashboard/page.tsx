@@ -1305,7 +1305,7 @@ export default function CreationDashboard() {
             {/* Mockup do Celular */}
             <div 
               ref={phoneContainerRef} 
-              className={`aspect-[9/16] rounded-[2.5rem] border-[8px] border-slate-950 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col justify-end ${
+              className={`aspect-[9/16] rounded-[2.5rem] border-[8px] border-slate-950 bg-[#050b14] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.75),0_0_30px_rgba(59,130,246,0.18)] ring-2 ring-slate-800/85 flex flex-col justify-end ${
                 zoomState === 'idle' ? 'relative w-full h-full z-25' : ''
               }`}
               style={transitionStyle}
