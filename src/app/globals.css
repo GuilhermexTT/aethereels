@@ -125,7 +125,7 @@ html {
 }
 
 /* Keyboard focus visibility outline */
-*:focus-visible {
+*:focus-visible:not(input):not(textarea):not(select) {
   outline: 2px solid #8b5cf6 !important;
   outline-offset: 2px;
   box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.3) !important;
