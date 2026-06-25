@@ -503,89 +503,149 @@ export default function AutoEdicaoPage() {
       {/* ESTADO 1: TELA DE UPLOAD (PORTA DE ENTRADA) */}
       {step === 'upload' && (
         <div className="grid grid-cols-12 gap-8 items-stretch flex-1 min-h-0">
-          {/* Esquerda: Upload Drag & Drop */}
-          <div className="col-span-12 lg:col-span-8 flex flex-col justify-center items-center gap-6 bg-[#060a13]/30 border border-blue-500/20 rounded-3xl p-8 h-full min-h-0">
-            <div className="max-w-md text-center flex flex-col items-center gap-4">
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/10 mb-2">
-                <FileVideo className="h-7 w-7" />
-              </div>
-              <h2 className="text-lg font-bold text-white tracking-wide">Importe seu Vídeo Bruto</h2>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Nossa inteligência artificial analisa sua fala, adiciona legendas sincronizadas palavra por palavra, insere cortes de câmera e vídeos de suporte (B-Rolls).
-              </p>
-            </div>
+          {/* Esquerda: Upload Drag & Drop (Todo o container é a zona de drag and drop) */}
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            className={`col-span-12 lg:col-span-8 flex flex-col justify-center items-center gap-6 bg-[#060a13]/30 border-2 border-dashed rounded-3xl p-10 h-full min-h-0 cursor-pointer transition-all duration-300 relative overflow-hidden group/upload-zone ${
+              dragActive
+                ? 'border-purple-500 bg-purple-500/5 shadow-[0_0_30px_rgba(168,85,247,0.15)] scale-[1.005]'
+                : 'border-[#1e2d4a]/50 hover:border-cyan-500/50 hover:bg-[#060a13]/50 shadow-md shadow-blue-500/2'
+            }`}
+          >
+            {/* Efeito Glow Radial Esfumaçado no fundo */}
+            <div 
+              className="absolute pointer-events-none z-0 opacity-40 blur-[80px] transition-all duration-500 group-hover/upload-zone:opacity-60"
+              style={{
+                width: '320px',
+                height: '320px',
+                background: 'radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, rgba(59, 130, 246, 0.1) 50%, transparent 100%)',
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)'
+              }}
+            />
 
-            {/* Box de Drag & Drop */}
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              className={`w-full max-w-lg border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all duration-300 ${
-                dragActive
-                  ? 'border-blue-400 bg-blue-500/5 shadow-[0_0_20px_rgba(59,130,246,0.15)] scale-[1.01]'
-                  : 'border-[#1e2d4a]/80 bg-[#060a13]/70 hover:bg-[#060a13]/90 hover:border-blue-500/60 shadow-md shadow-blue-500/2'
-              }`}
-            >
-              <input 
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept="video/*"
-                onChange={handleFileChange}
-              />
-              <div className="h-10 w-10 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
-                <Upload className="h-4.5 w-4.5" />
+            <input 
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept="video/*"
+              onChange={handleFileChange}
+            />
+
+            <div className="z-10 text-center flex flex-col items-center gap-6 max-w-lg">
+              {/* Ícone minimalista com background translúcido e glow */}
+              <div className="h-16 w-16 rounded-full bg-[#080d19]/80 border border-blue-500/30 flex items-center justify-center text-cyan-400 shadow-xl transition-all duration-300 group-hover/upload-zone:scale-110 group-hover/upload-zone:border-purple-500/50 group-hover/upload-zone:text-purple-400 relative">
+                <div className="absolute inset-0 rounded-full bg-cyan-400/10 blur-[8px] group-hover/upload-zone:bg-purple-500/20" />
+                <Upload className="h-6 w-6 z-10" />
               </div>
-              <div className="text-center">
-                <p className="text-xs font-semibold text-slate-200">Suba o seu vídeo bruto falando (até 60s)</p>
-                <p className="text-[10px] text-slate-500 mt-1">Arraste e solte o arquivo aqui ou clique para selecionar</p>
+
+              <div className="flex flex-col gap-3">
+                <h2 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight uppercase">
+                  Importe seu Vídeo Bruto
+                </h2>
+                <p className="text-[11px] text-slate-400 max-w-sm mx-auto leading-normal">
+                  Arraste e solte o seu vídeo bruto falando (até 60s) aqui ou clique para selecionar. A IA fará todo o resto de forma automática.
+                </p>
+              </div>
+
+              {/* Badges explicativos minimalistas em fileira de suporte */}
+              <div className="flex gap-4 mt-2">
+                <span className="text-[9px] font-bold text-slate-500 bg-[#070c17]/60 border border-slate-900 px-3 py-1 rounded-full uppercase tracking-wider">
+                  ⚡ Auto-Legendas
+                </span>
+                <span className="text-[9px] font-bold text-slate-500 bg-[#070c17]/60 border border-slate-900 px-3 py-1 rounded-full uppercase tracking-wider">
+                  🔎 Inteligente Zoom
+                </span>
+                <span className="text-[9px] font-bold text-slate-500 bg-[#070c17]/60 border border-slate-900 px-3 py-1 rounded-full uppercase tracking-wider">
+                  🎥 B-Rolls
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Direita: Mockup Informativo */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col items-center justify-center">
-            <div className="w-[280px] aspect-[9/16] rounded-[2.5rem] border-[8px] border-slate-950 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col p-6 relative">
+          {/* Direita: Mockup Informativo e Descrições */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col items-center justify-center gap-6">
+            
+            {/* iPhone Mockup */}
+            <div className="w-[280px] aspect-[9/16] rounded-[2.5rem] border-[8px] border-slate-950 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col justify-center items-center p-6 relative">
+              {/* Fake Status Bar */}
+              <div className="absolute top-2.5 inset-x-5 flex justify-between items-center text-[8px] font-bold text-slate-500/80 z-45 pointer-events-none select-none">
+                <span>23:25</span>
+                <div className="flex items-center gap-1">
+                  <span>📶</span>
+                  <span>🔋</span>
+                </div>
+              </div>
+
               {/* Dynamic Island / Notch */}
               <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-45" />
 
-              <div className="flex-1 flex flex-col justify-center gap-4 text-center mt-4">
-                <span className="text-[10px] text-cyan-400 font-extrabold uppercase tracking-widest animate-pulse">Tecnologia ReelsFlow</span>
+              {/* Player Waiting Screen */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-[#0b1424] via-[#050b14] to-[#010408]">
+                {/* Abstrato Blur Glow de fundo */}
+                <div className="w-32 h-32 rounded-full bg-blue-500/5 blur-3xl absolute" />
                 
-                <h3 className="text-sm font-bold text-white leading-snug">Como a IA vai transformar seu vídeo:</h3>
-                
-                <div className="flex flex-col gap-3.5 text-left mt-2">
-                  <div className="flex gap-2">
-                    <span className="text-sm">💬</span>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-200">Legendas Automáticas</p>
-                      <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Legenda palavra por palavra com cores neon dinâmicas e efeitos visuais.</p>
-                    </div>
-                  </div>
+                {/* Legenda de impacto central */}
+                <div className="z-10 px-4 text-center">
+                  <h1 
+                    className="text-xs font-black tracking-widest uppercase mb-1 drop-shadow-md animate-pulse"
+                    style={{
+                      fontFamily: 'Montserrat, sans-serif',
+                      color: neonColor || '#FFD700',
+                      textShadow: '0 0 10px rgba(255,215,0,0.2)'
+                    }}
+                  >
+                    [ AGUARDANDO VÍDEO... ]
+                  </h1>
+                  <p className="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest mt-1.5">
+                    Envie um arquivo para iniciar a edição
+                  </p>
+                </div>
 
-                  <div className="flex gap-2">
-                    <span className="text-sm">🔎</span>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-200">Zoom Inteligente</p>
-                      <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Cortes de câmera e enquadramentos dinâmicos nos momentos cruciais do áudio.</p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <span className="text-sm">⚡</span>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-200">Inserção de B-Rolls</p>
-                      <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Imagens cinemáticas e vídeos de apoio inseridos sobre suas falas importantes.</p>
-                    </div>
-                  </div>
+                {/* Simulated reels side icons in translucent outline for mockup vibe */}
+                <div className="absolute right-3.5 bottom-16 flex flex-col items-center gap-4 opacity-20">
+                  <div className="h-7 w-7 rounded-full border border-white flex items-center justify-center text-white" />
+                  <div className="h-7 w-7 rounded-full border border-white flex items-center justify-center text-white" />
+                  <div className="h-7 w-7 rounded-full border border-white flex items-center justify-center text-white" />
                 </div>
               </div>
 
               {/* Bottom Home Indicator Pill */}
-              <div className="w-20 h-1 bg-white/20 rounded-full mx-auto mt-auto" />
+              <div className="w-20 h-1 bg-white/20 rounded-full mx-auto mt-auto z-45" />
             </div>
+
+            {/* Cards explicativos abaixo do celular */}
+            <div className="w-full max-w-[280px] flex flex-col gap-2.5">
+              <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-3 flex gap-2.5 items-start">
+                <span className="text-xs bg-cyan-500/10 text-cyan-400 p-1.5 rounded-lg">💬</span>
+                <div>
+                  <h4 className="text-[10px] font-bold text-slate-200">Legendas Automáticas</h4>
+                  <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Legenda palavra por palavra com cores neon dinâmicas e efeitos visuais.</p>
+                </div>
+              </div>
+
+              <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-3 flex gap-2.5 items-start">
+                <span className="text-xs bg-purple-500/10 text-purple-400 p-1.5 rounded-lg">🔎</span>
+                <div>
+                  <h4 className="text-[10px] font-bold text-slate-200">Zoom Inteligente</h4>
+                  <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Cortes de câmera e enquadramentos dinâmicos nos momentos cruciais do áudio.</p>
+                </div>
+              </div>
+
+              <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-3 flex gap-2.5 items-start">
+                <span className="text-xs bg-indigo-500/10 text-indigo-400 p-1.5 rounded-lg">⚡</span>
+                <div>
+                  <h4 className="text-[10px] font-bold text-slate-200">Inserção de B-Rolls</h4>
+                  <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Imagens cinemáticas e vídeos de apoio inseridos sobre suas falas importantes.</p>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
