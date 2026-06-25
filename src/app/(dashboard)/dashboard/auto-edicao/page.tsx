@@ -839,197 +839,253 @@ export default function AutoEdicaoPage() {
 
           </div>
 
-          {/* COLUNA DIREITA: CELULAR SIMULADO COMO PLAYER FIXO */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col gap-4 h-full min-h-0 justify-between items-center pb-2">
-            <h2 className="text-xs uppercase font-extrabold tracking-wider text-slate-500 w-full text-left shrink-0">Visualização em Tempo Real</h2>
+          {/* COLUNA DIREITA: CELULAR SIMULADO COMO PLAYER FIXO DENTRO DE CARD PREMIUM */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col h-full min-h-0">
+            <div className="flex-1 min-h-0 w-full border border-blue-500/30 bg-[#060a13] shadow-[0_0_25px_rgba(59,130,246,0.06)] rounded-[2rem] p-6 flex flex-col items-center justify-between gap-4">
+              <h2 className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400 w-full text-left shrink-0">
+                Visualização em Tempo Real
+              </h2>
 
-            <div className="flex-1 min-h-0 w-full flex items-center justify-center">
-              <div 
-                ref={phoneContainerRef}
-                className="h-full max-h-[460px] aspect-[9/16] bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.08)] rounded-[2.5rem] border-[8px] border-slate-950 overflow-hidden flex flex-col justify-end relative"
-              >
-              {/* Dynamic Island / Notch */}
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-45 flex items-center justify-center pointer-events-none">
-                <div className="w-1.5 h-1.5 bg-slate-900 rounded-full mr-1"></div>
-                <div className="w-3.5 h-0.5 bg-slate-900 rounded-full mx-1"></div>
-                <div className="w-1.5 h-1.5 bg-blue-900/40 rounded-full ml-1"></div>
-              </div>
+              <div className="flex-1 min-h-0 w-full flex items-center justify-center">
+                <div 
+                  ref={phoneContainerRef}
+                  className="h-full max-h-[530px] aspect-[9/16] bg-[#060a13] border border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.12)] rounded-[2.5rem] border-[8px] border-slate-950 overflow-hidden flex flex-col justify-end relative"
+                >
+                  {/* Fake Status Bar */}
+                  <div className="absolute top-2.5 inset-x-5 flex justify-between items-center text-[8px] font-bold text-white/70 z-45 pointer-events-none select-none">
+                    <span>23:25</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>📶</span>
+                      <span>📶</span>
+                      <span>🔋</span>
+                    </div>
+                  </div>
 
-              {/* Bottom Home Indicator Pill */}
-              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-20 h-1 bg-white/40 rounded-full z-45 pointer-events-none" />
+                  {/* Dynamic Island / Notch */}
+                  <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-45 flex items-center justify-center pointer-events-none">
+                    <div className="w-1.5 h-1.5 bg-slate-900 rounded-full mr-1"></div>
+                    <div className="w-3.5 h-0.5 bg-slate-900 rounded-full mx-1"></div>
+                    <div className="w-1.5 h-1.5 bg-blue-900/40 rounded-full ml-1"></div>
+                  </div>
 
-              {/* Video Player */}
-              {videoUrl ? (
-                <div className="w-full h-full relative flex flex-col justify-end group/player">
-                  {/* B-Roll player overlay under the subtitles if active */}
-                  {bRollsActive && bRollUrls.map((url, idx) => {
-                    const isActive = idx === activeBRollIdx;
-                    return (
+                  {/* Bottom Home Indicator Pill */}
+                  <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-20 h-1 bg-white/40 rounded-full z-45 pointer-events-none" />
+
+                  {/* Badge de IA no topo */}
+                  {videoUrl && (
+                    <div className="absolute top-9 left-4 z-35 pointer-events-none select-none">
+                      <div className="bg-[#050b14]/75 backdrop-blur-md border border-amber-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-md">
+                        <span className="text-amber-400 text-[8px]">✨</span>
+                        <span className="text-[7.5px] font-extrabold text-amber-400 tracking-wider uppercase">Exemplo real gerado com IA</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Video Player */}
+                  {videoUrl ? (
+                    <div className="w-full h-full relative flex flex-col justify-end group/player">
+                      {/* B-Roll player overlay under the subtitles if active */}
+                      {bRollsActive && bRollUrls.map((url, idx) => {
+                        const isActive = idx === activeBRollIdx;
+                        return (
+                          <video
+                            key={`broll-player-${idx}`}
+                            ref={(el) => { bRollRefs.current[idx] = el; }}
+                            src={url}
+                            preload="auto"
+                            style={{
+                              opacity: isActive ? 1 : 0,
+                              pointerEvents: isActive ? 'auto' : 'none',
+                              zIndex: isActive ? 20 : 10
+                            }}
+                            loop
+                            playsInline
+                            muted={true}
+                            className="absolute inset-0 w-full h-full object-cover bg-black"
+                          />
+                        );
+                      })}
+
+                      {/* Main user video element */}
                       <video
-                        key={`broll-player-${idx}`}
-                        ref={(el) => { bRollRefs.current[idx] = el; }}
-                        src={url}
-                        preload="auto"
-                        style={{
-                          opacity: isActive ? 1 : 0,
-                          pointerEvents: isActive ? 'auto' : 'none',
-                          zIndex: isActive ? 20 : 10
-                        }}
+                        ref={videoRef}
+                        src={videoUrl}
+                        onTimeUpdate={handleTimeUpdate}
+                        onLoadedMetadata={handleLoadedMetadata}
+                        onClick={togglePlay}
                         loop
                         playsInline
-                        muted={true}
-                        className="absolute inset-0 w-full h-full object-cover bg-black"
-                      />
-                    );
-                  })}
-
-                  {/* Main user video element */}
-                  <video
-                    ref={videoRef}
-                    src={videoUrl}
-                    onTimeUpdate={handleTimeUpdate}
-                    onLoadedMetadata={handleLoadedMetadata}
-                    onClick={togglePlay}
-                    loop
-                    playsInline
-                    style={{
-                      // If B-roll is active and showing, we push the user video behind the B-roll visually
-                      opacity: bRollsActive && activeBRollIdx !== -1 ? 0 : 1,
-                      zIndex: 15
-                    }}
-                    className="absolute inset-0 w-full h-full object-cover cursor-pointer bg-black"
-                  />
-
-                  {/* Legenda Estilizada sobreposta */}
-                  {(() => {
-                    const activeSub = subtitles.find(sub => currentTime >= sub.start && currentTime <= sub.end);
-                    if (!activeSub || !activeSub.text.trim()) return null;
-
-                    const words = activeSub.text.trim().split(/\s+/);
-                    const totalWords = words.length;
-                    const duration = activeSub.end - activeSub.start;
-                    const elapsed = currentTime - activeSub.start;
-
-                    const activeWordIdx = totalWords > 1 && duration > 0
-                      ? Math.min(Math.floor((elapsed / duration) * totalWords), totalWords - 1)
-                      : 0;
-
-                    // Ajustar tamanhos de fonte baseados no phoneWidth e selector
-                    const sizeMult = textSize === 'small' ? 0.055 : textSize === 'large' ? 0.090 : 0.075;
-
-                    return (
-                      <div
                         style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          display: 'flex',
-                          justifyContent: 'center',
-                          alignItems: 'flex-end',
-                          paddingBottom: `${phoneWidth * 0.35}px`,
-                          paddingLeft: `${phoneWidth * 0.08}px`,
-                          paddingRight: `${phoneWidth * 0.08}px`,
-                          pointerEvents: 'none',
-                          zIndex: 35
+                          // If B-roll is active and showing, we push the user video behind the B-roll visually
+                          opacity: bRollsActive && activeBRollIdx !== -1 ? 0 : 1,
+                          zIndex: 15
                         }}
-                      >
-                        <h1
-                          style={{
-                            fontFamily: `${fontFamily}, sans-serif`,
-                            fontSize: `${phoneWidth * sizeMult}px`,
-                            fontWeight: 900,
-                            textTransform: 'uppercase',
-                            textAlign: 'center',
-                            lineHeight: 1.25,
-                            letterSpacing: '1px',
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            justifyContent: 'center',
-                            rowGap: '4px',
-                            textShadow: `
-                              -2px -2px 0 #000,
-                               2px -2px 0 #000,
-                              -2px  2px 0 #000,
-                               2px  2px 0 #000,
-                               0px 4px 10px rgba(0, 0, 0, 0.8)
-                            `
-                          }}
-                        >
-                          {words.map((word, index) => {
-                            const isWordActive = index === activeWordIdx;
-                            return (
-                              <span
-                                key={index}
-                                style={{
-                                  color: isWordActive ? neonColor : '#FFFFFF',
-                                  marginRight: '6px',
-                                  display: 'inline-block',
-                                  transform: isWordActive ? 'scale(1.10)' : 'scale(1.0)',
-                                  transition: 'transform 0.15s ease-out'
-                                }}
-                              >
-                                {word}
-                              </span>
-                            );
-                          })}
-                        </h1>
+                        className="absolute inset-0 w-full h-full object-cover cursor-pointer bg-black"
+                      />
+
+                      {/* Reels Overlays: Heart, Comment, Share (como no segundo screenshot) */}
+                      <div className="absolute right-3 bottom-24 flex flex-col items-center gap-4.5 z-35 pointer-events-auto select-none">
+                        <button className="flex flex-col items-center gap-1 group/btn">
+                          <div className="h-8.5 w-8.5 rounded-full bg-black/30 backdrop-blur-sm border border-white/5 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-md">
+                            <Heart className="h-4 w-4" />
+                          </div>
+                          <span className="text-[8.5px] font-bold text-white tracking-wider text-shadow">12.8K</span>
+                        </button>
+                        
+                        <button className="flex flex-col items-center gap-1 group/btn">
+                          <div className="h-8.5 w-8.5 rounded-full bg-black/30 backdrop-blur-sm border border-white/5 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-md">
+                            <MessageCircle className="h-4 w-4" />
+                          </div>
+                          <span className="text-[8.5px] font-bold text-white tracking-wider text-shadow">352</span>
+                        </button>
+
+                        <button className="flex flex-col items-center gap-1 group/btn">
+                          <div className="h-8.5 w-8.5 rounded-full bg-black/30 backdrop-blur-sm border border-white/5 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-md">
+                            <Share2 className="h-4 w-4" />
+                          </div>
+                          <span className="text-[8.5px] font-bold text-white tracking-wider text-shadow">2.1K</span>
+                        </button>
                       </div>
-                    );
-                  })()}
 
-                  {/* Controles de Play/Pause na base */}
-                  <div className="absolute bottom-4 inset-x-4 flex items-center justify-between z-40 pointer-events-auto">
-                    <button 
-                      onClick={togglePlay}
-                      className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95"
-                    >
-                      {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 fill-current ml-0.5" />}
-                    </button>
+                      {/* Legenda Estilizada sobreposta */}
+                      {(() => {
+                        const activeSub = subtitles.find(sub => currentTime >= sub.start && currentTime <= sub.end);
+                        if (!activeSub || !activeSub.text.trim()) return null;
 
-                    <button 
-                      onClick={toggleMute}
-                      className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95"
-                    >
-                      {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
+                        const words = activeSub.text.trim().split(/\s+/);
+                        const totalWords = words.length;
+                        const duration = activeSub.end - activeSub.start;
+                        const elapsed = currentTime - activeSub.start;
 
-                  {/* Barra de Progresso */}
-                  <div className="absolute bottom-0 inset-x-0 h-1 bg-white/15 z-40 select-none">
-                    <div 
-                      className="h-full bg-gradient-to-r from-cyan-500 to-blue-500" 
-                      style={{ width: `${videoDuration ? (currentTime / videoDuration) * 100 : 0}%` }}
-                    />
-                  </div>
+                        const activeWordIdx = totalWords > 1 && duration > 0
+                          ? Math.min(Math.floor((elapsed / duration) * totalWords), totalWords - 1)
+                          : 0;
 
+                        // Ajustar tamanhos de fonte baseados no phoneWidth e selector
+                        const sizeMult = textSize === 'small' ? 0.055 : textSize === 'large' ? 0.090 : 0.075;
+
+                        return (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              display: 'flex',
+                              justifyContent: 'center',
+                              alignItems: 'flex-end',
+                              paddingBottom: `${phoneWidth * 0.35}px`,
+                              paddingLeft: `${phoneWidth * 0.08}px`,
+                              paddingRight: `${phoneWidth * 0.08}px`,
+                              pointerEvents: 'none',
+                              zIndex: 35
+                            }}
+                          >
+                            <h1
+                              style={{
+                                fontFamily: `${fontFamily}, sans-serif`,
+                                fontSize: `${phoneWidth * sizeMult}px`,
+                                fontWeight: 900,
+                                textTransform: 'uppercase',
+                                textAlign: 'center',
+                                lineHeight: 1.25,
+                                letterSpacing: '1px',
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                justifyContent: 'center',
+                                rowGap: '4px',
+                                textShadow: `
+                                  -2px -2px 0 #000,
+                                   2px -2px 0 #000,
+                                  -2px  2px 0 #000,
+                                   2px  2px 0 #000,
+                                   0px 4px 10px rgba(0, 0, 0, 0.8)
+                                `
+                              }}
+                            >
+                              {words.map((word, index) => {
+                                const isWordActive = index === activeWordIdx;
+                                return (
+                                  <span
+                                    key={index}
+                                    style={{
+                                      color: isWordActive ? neonColor : '#FFFFFF',
+                                      marginRight: '6px',
+                                      display: 'inline-block',
+                                      transform: isWordActive ? 'scale(1.10)' : 'scale(1.0)',
+                                      transition: 'transform 0.15s ease-out'
+                                    }}
+                                  >
+                                    {word}
+                                  </span>
+                                );
+                              })}
+                            </h1>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Controles de Play/Pause na base */}
+                      <div className="absolute bottom-4 inset-x-4 flex items-center justify-between z-40 pointer-events-auto">
+                        <button 
+                          onClick={togglePlay}
+                          className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95"
+                        >
+                          {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 fill-current ml-0.5" />}
+                        </button>
+
+                        <button 
+                          onClick={toggleMute}
+                          className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95"
+                        >
+                          {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+
+                      {/* Barra de Progresso */}
+                      <div className="absolute bottom-0 inset-x-0 h-1 bg-white/15 z-40 select-none">
+                        <div 
+                          className="h-full bg-gradient-to-r from-cyan-500 to-blue-500" 
+                          style={{ width: `${videoDuration ? (currentTime / videoDuration) * 100 : 0}%` }}
+                        />
+                      </div>
+
+                    </div>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-slate-600 text-[10px] font-bold p-6 text-center leading-relaxed">
+                      Aguardando envio do vídeo para reproduzir...
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="h-full flex items-center justify-center text-slate-600 text-[10px] font-bold p-6 text-center leading-relaxed">
-                  Aguardando envio do vídeo para reproduzir...
-                </div>
+              </div>
+
+              {/* Informações de formato e duração */}
+              <div className="text-center shrink-0">
+                <p className="text-[11px] text-slate-400 font-bold flex items-center justify-center gap-1.5">
+                  <span>📱 Vídeo completo em {videoDuration ? Math.round(videoDuration) : '15'}s</span>
+                  <span className="text-slate-600">•</span>
+                  <span>Formato Reels 9:16</span>
+                </p>
+              </div>
+
+              {/* Botão Salvar e Exportar */}
+              {videoUrl && (
+                <button 
+                  onClick={() => {
+                    alert('Seu vídeo editado foi enviado para renderização final! Você receberá uma notificação em instantes.');
+                    setStep('upload');
+                    setVideoUrl(null);
+                    setSubtitles([]);
+                    setBRollsActive(false);
+                  }}
+                  className="w-full bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 py-3.5 rounded-xl font-bold text-white transition-all active:scale-[0.99] text-xs shadow-lg shadow-indigo-500/10 flex items-center justify-center gap-1.5 shrink-0"
+                >
+                  <span>⚡ Renderizar Vídeo HD Final</span>
+                  <span className="text-[10px] text-white/70 font-semibold normal-case">(Consome 1 crédito)</span>
+                </button>
               )}
             </div>
-            </div>
-
-            {/* Botão Salvar e Exportar */}
-            {videoUrl && (
-              <button 
-                onClick={() => {
-                  alert('Seu vídeo editado foi enviado para renderização final! Você receberá uma notificação em instantes.');
-                  setStep('upload');
-                  setVideoUrl(null);
-                  setSubtitles([]);
-                  setBRollsActive(false);
-                }}
-                className="w-full max-w-[280px] bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 py-3 rounded-xl font-bold text-white transition-all active:scale-[0.99] text-xs shadow-lg shadow-indigo-500/10 flex items-center justify-center gap-1.5 shrink-0"
-              >
-                <span>⚡ Renderizar Vídeo HD Final</span>
-                <span className="text-[10px] text-white/70 font-semibold normal-case">(Consome 1 crédito)</span>
-              </button>
-            )}
-
           </div>
 
         </div>
