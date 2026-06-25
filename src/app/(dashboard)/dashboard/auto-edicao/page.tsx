@@ -632,11 +632,10 @@ export default function AutoEdicaoPage() {
       </div>
 
       {/* ESTADO 1: TELA DE UPLOAD (PORTA DE ENTRADA) */}
-      {/* ESTADO 1: TELA DE UPLOAD (PORTA DE ENTRADA) */}
       {step === 'upload' && (
-        <div className="grid grid-cols-12 gap-8 items-stretch flex-1 min-h-0">
+        <div className="flex flex-col md:flex-row gap-8 items-stretch flex-1 min-h-0">
           {/* Esquerda: Container principal do upload */}
-          <div className="col-span-12 lg:col-span-8 flex flex-col h-full max-h-[580px] bg-[#060a13] border border-blue-500/80 shadow-[0_0_20px_rgba(59,130,246,0.12)] rounded-[2rem] p-6 relative overflow-hidden self-center w-full min-h-0 justify-between transition-all duration-300">
+          <div className="w-full md:w-8/12 flex flex-col md:h-full md:max-h-[580px] h-auto bg-[#060a13] border border-blue-500/80 shadow-[0_0_20px_rgba(59,130,246,0.12)] rounded-[2rem] p-4 md:p-6 relative overflow-hidden self-center min-h-0 justify-between transition-all duration-300">
             {/* Top header area */}
             <div className="flex flex-col text-center mt-2 shrink-0">
               <div className="flex justify-center mb-3">
@@ -644,7 +643,7 @@ export default function AutoEdicaoPage() {
                   Passo 1 de 3
                 </span>
               </div>
-              <h2 className="text-2xl font-black text-white tracking-tight uppercase">
+              <h2 className="text-xl md:text-2xl font-black text-white tracking-tight uppercase">
                 Importe seu vídeo bruto
               </h2>
               <p className="text-[11px] text-slate-450 max-w-md mx-auto leading-normal mt-1.5">
@@ -660,7 +659,7 @@ export default function AutoEdicaoPage() {
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
-              className={`flex-1 flex flex-col justify-center items-center gap-4 bg-[#03060c]/40 border-2 border-dashed rounded-3xl p-6 my-5 cursor-pointer transition-all duration-300 relative overflow-hidden ${
+              className={`flex-1 flex flex-col justify-center items-center gap-3 md:gap-4 bg-[#03060c]/40 border-2 border-dashed rounded-3xl p-4 my-3 md:p-6 md:my-5 py-8 md:py-12 cursor-pointer transition-all duration-300 relative overflow-hidden ${
                 dragActive
                   ? 'border-purple-500 bg-purple-500/5 shadow-[0_0_30px_rgba(168,85,247,0.15)] scale-[1.002]'
                   : 'border-[#1e2d4a]/50 hover:border-cyan-500/35 hover:bg-[#060a13]/50'
@@ -689,21 +688,22 @@ export default function AutoEdicaoPage() {
 
               <div className="z-10 text-center flex flex-col items-center gap-4">
                 {/* Icon Circle */}
-                <div className="h-14 w-14 rounded-full bg-gradient-to-b from-[#1c183a] to-[#0d0924] border border-[#7c3aed]/30 flex items-center justify-center text-purple-400 shadow-xl transition-all duration-300 relative">
+                <div className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-gradient-to-b from-[#1c183a] to-[#0d0924] border border-[#7c3aed]/30 flex items-center justify-center text-purple-400 shadow-xl transition-all duration-300 relative">
                   <Upload className="h-5 w-5" />
                 </div>
 
                 <div className="flex flex-col gap-1 items-center">
-                  <span className="text-xs font-bold text-slate-200 uppercase tracking-wide">
-                    Arraste e solte seu vídeo aqui
+                  <span className="text-xs font-bold text-slate-200 uppercase tracking-wide text-center px-2">
+                    <span className="hidden md:inline">Arraste e solte seu vídeo aqui</span>
+                    <span className="inline md:hidden">Suba seu vídeo bruto</span>
                   </span>
                   <span className="text-[10px] text-slate-500 font-bold">ou</span>
                 </div>
 
                 {/* Styled Button */}
-                <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#6366f1] to-[#a855f7] hover:opacity-95 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-purple-500/20 active:scale-95 transition-all select-none">
-                  <Folder className="h-3.5 w-3.5" />
-                  Selecionar arquivo
+                <div className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#6366f1] to-[#a855f7] hover:opacity-95 px-6 py-3.5 md:px-5 md:py-2.5 text-sm md:text-xs font-bold text-white shadow-lg shadow-purple-500/20 active:scale-95 transition-all select-none w-full max-w-[200px] md:w-auto">
+                  <Folder className="h-3.5 w-3.5 shrink-0" />
+                  <span>Selecionar arquivo</span>
                 </div>
 
                 <span className="text-[9px] text-slate-550 font-semibold tracking-wide mt-2">
@@ -713,7 +713,7 @@ export default function AutoEdicaoPage() {
             </div>
 
             {/* Bottom Row Panel */}
-            <div className="w-full bg-[#040812]/50 border border-[#15233c]/60 rounded-2xl p-3 px-5 flex justify-between items-center gap-4 shrink-0 mb-1">
+            <div className="w-full bg-[#040812]/50 border border-[#15233c]/60 rounded-2xl p-4 md:p-3 md:px-5 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 shrink-0 mb-1">
               {/* Feature 1 */}
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
@@ -726,7 +726,7 @@ export default function AutoEdicaoPage() {
               </div>
 
               {/* Feature 2 */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 border-t border-[#15233c]/20 pt-3 md:border-t-0 md:pt-0">
                 <div className="h-8 w-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
                   <Zap className="h-4 w-4" />
                 </div>
@@ -737,7 +737,7 @@ export default function AutoEdicaoPage() {
               </div>
 
               {/* Feature 3 */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 border-t border-[#15233c]/20 pt-3 md:border-t-0 md:pt-0">
                 <div className="h-8 w-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
                   <CheckCircle2 className="h-4 w-4" />
                 </div>
@@ -750,7 +750,7 @@ export default function AutoEdicaoPage() {
           </div>
 
           {/* Direita: Recursos da IA e Benefícios (Sem Celular, Conforme Mockup) */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col h-full max-h-[580px] bg-[#060a13] border border-blue-500/80 shadow-[0_0_20px_rgba(59,130,246,0.12)] rounded-[2rem] p-6 relative overflow-hidden self-center w-full min-h-0 justify-between gap-4 transition-all duration-300">
+          <div className="w-full md:w-4/12 flex flex-col md:h-full md:max-h-[580px] h-auto bg-[#060a13] border border-blue-500/80 shadow-[0_0_20px_rgba(59,130,246,0.12)] rounded-[2rem] p-4 md:p-6 relative overflow-hidden self-center min-h-0 justify-between gap-4 transition-all duration-300">
             
             {/* Header */}
             <div className="flex flex-col gap-1 w-full text-left mt-2 shrink-0">
