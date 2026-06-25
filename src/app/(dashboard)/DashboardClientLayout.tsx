@@ -19,18 +19,10 @@ import { DashboardProvider, useDashboard } from '../../context/DashboardContext'
 
 interface SidebarContentProps {
   onClose?: () => void;
-  textScale: number;
-  onChangeTextScale: (scale: number) => void;
-  reducedMotion: boolean;
-  onChangeReducedMotion: (enabled: boolean) => void;
 }
 
 function SidebarContent({ 
   onClose,
-  textScale,
-  onChangeTextScale,
-  reducedMotion,
-  onChangeReducedMotion
 }: SidebarContentProps) {
   const pathname = usePathname();
   const { credits } = useDashboard();
@@ -86,53 +78,8 @@ function SidebarContent({
         })}
       </nav>
 
-      {/* Accessibility Widget (above credits) */}
-      <div className="mt-auto flex flex-col gap-2 mb-3.5 p-3 bg-[#070c17]/60 border border-[#16223f]/50 rounded-2xl select-none">
-        <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Acessibilidade</span>
-        
-        <div className="flex items-center gap-2">
-          {/* Text scale toggle */}
-          <div className="flex-1 flex bg-slate-950/65 border border-[#16223f]/40 rounded-xl p-0.5" role="group" aria-label="Ajuste do tamanho de texto">
-            {[
-              { label: 'A-', scale: 0.85, desc: 'Texto pequeno' },
-              { label: 'A', scale: 1.0, desc: 'Texto padrão' },
-              { label: 'A+', scale: 1.15, desc: 'Texto grande' }
-            ].map((opt) => (
-              <button
-                key={opt.label}
-                onClick={() => onChangeTextScale(opt.scale)}
-                aria-label={opt.desc}
-                aria-pressed={textScale === opt.scale}
-                className={`flex-1 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  textScale === opt.scale
-                    ? 'bg-[#161328] border border-[#7c3aed]/40 text-indigo-300'
-                    : 'text-slate-500 hover:text-slate-355'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Reduced motion toggle */}
-          <button
-            onClick={() => onChangeReducedMotion(!reducedMotion)}
-            aria-label={reducedMotion ? "Ativar transições de tela" : "Reduzir animações e transições"}
-            aria-pressed={reducedMotion}
-            className={`px-2.5 py-1.5 text-[10px] font-bold rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${
-              reducedMotion
-                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.05)]'
-                : 'bg-slate-950/65 border-[#16223f]/40 text-slate-500 hover:text-slate-355'
-            }`}
-          >
-            <span>{reducedMotion ? '🔇' : '🎬'}</span>
-            <span className="whitespace-nowrap">Animações</span>
-          </button>
-        </div>
-      </div>
-
       {/* Credit Panel at Bottom */}
-      <div className="p-4.5 bg-[#070c17]/60 border border-[#16223f]/50 rounded-2xl flex flex-col gap-3">
+      <div className="mt-auto p-4.5 bg-[#070c17]/60 border border-[#16223f]/50 rounded-2xl flex flex-col gap-3">
         <div className="flex flex-col">
           <span className="text-[11px] text-slate-500 uppercase font-bold tracking-wider">Seus créditos</span>
           <div className="flex items-center gap-1.5 mt-1">
@@ -217,47 +164,18 @@ export default function DashboardClientLayout({
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const [textScale, setTextScale] = useState(1.0);
-  const [reducedMotion, setReducedMotion] = useState(false);
-
   useEffect(() => {
-    const savedScale = localStorage.getItem('aether_text_scale');
-    const savedMotion = localStorage.getItem('aether_reduced_motion');
-    if (savedScale) {
-      const scaleVal = parseFloat(savedScale);
-      setTextScale(scaleVal);
-      document.documentElement.style.setProperty('--text-scale', String(scaleVal));
-    }
-    if (savedMotion) {
-      const motionVal = savedMotion === 'true';
-      setReducedMotion(motionVal);
-      document.documentElement.classList.toggle('reduced-motion', motionVal);
-    }
+    // Reverter/limpar preferências de acessibilidade anteriores
+    document.documentElement.style.removeProperty('--text-scale');
+    document.documentElement.classList.remove('reduced-motion');
   }, []);
-
-  const handleTextScaleChange = (scale: number) => {
-    setTextScale(scale);
-    localStorage.setItem('aether_text_scale', String(scale));
-    document.documentElement.style.setProperty('--text-scale', String(scale));
-  };
-
-  const handleReducedMotionChange = (enabled: boolean) => {
-    setReducedMotion(enabled);
-    localStorage.setItem('aether_reduced_motion', String(enabled));
-    document.documentElement.classList.toggle('reduced-motion', enabled);
-  };
 
   return (
     <DashboardProvider>
       <div className="min-h-screen bg-[#02050c] flex font-sans text-slate-100 overflow-hidden">
         {/* Desktop Sidebar (hidden on mobile) */}
         <aside className="hidden md:block w-64 shrink-0 h-screen sticky top-0" role="complementary">
-          <SidebarContent 
-            textScale={textScale}
-            onChangeTextScale={handleTextScaleChange}
-            reducedMotion={reducedMotion}
-            onChangeReducedMotion={handleReducedMotionChange}
-          />
+          <SidebarContent />
         </aside>
 
         {/* Mobile Sidebar (Drawer overlay) */}
@@ -271,13 +189,7 @@ export default function DashboardClientLayout({
             />
             {/* Drawer */}
             <div className="relative w-64 max-w-xs h-full flex flex-col z-10">
-              <SidebarContent 
-                onClose={() => setIsSidebarOpen(false)} 
-                textScale={textScale}
-                onChangeTextScale={handleTextScaleChange}
-                reducedMotion={reducedMotion}
-                onChangeReducedMotion={handleReducedMotionChange}
-              />
+              <SidebarContent onClose={() => setIsSidebarOpen(false)} />
             </div>
           </div>
         )}
