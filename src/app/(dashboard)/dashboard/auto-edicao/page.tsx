@@ -42,6 +42,7 @@ export default function AutoEdicaoPage() {
 
   // Estados de Configuração da Tela
   const [step, setStep] = useState<'upload' | 'processing' | 'editor'>('upload');
+  const [activeTab, setActiveTab] = useState<'roteiro' | 'estilos'>('roteiro');
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
@@ -621,169 +622,193 @@ export default function AutoEdicaoPage() {
           {/* COLUNA ESQUERDA: PAINEL DE CONTROLE, EDITOR DE TEXTO E CHAT */}
           <div className="col-span-12 lg:col-span-8 flex flex-col gap-4 h-full min-h-0">
             
-            {/* Bloco 1: Seletores de Legenda */}
-            <div className="bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.06)] rounded-2xl p-4 flex flex-col gap-3 shrink-0">
-              <div className="flex items-center gap-2 border-b border-slate-900/60 pb-2.5">
-                <Sliders className="h-4.5 w-4.5 text-cyan-400" />
-                <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Ajuste de Design das Legendas</h3>
-              </div>
-
-              <div className="grid grid-cols-3 gap-6">
-                {/* 1. Cor Neon */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Cor de Destaque</span>
-                  <div className="flex items-center gap-2">
-                    {[
-                      { name: 'Gold', val: '#FFD700', bg: 'bg-[#FFD700]' },
-                      { name: 'Cyan', val: '#00E5FF', bg: 'bg-[#00E5FF]' },
-                      { name: 'Pink', val: '#FF007F', bg: 'bg-[#FF007F]' },
-                      { name: 'Emerald', val: '#10B981', bg: 'bg-[#10B981]' },
-                      { name: 'Amber', val: '#F59E0B', bg: 'bg-[#F59E0B]' }
-                    ].map(c => (
-                      <button
-                        key={c.val}
-                        onClick={() => setNeonColor(c.val)}
-                        className={`h-6 w-6 rounded-full ${c.bg} transition-all border ${
-                          neonColor === c.val ? 'ring-2 ring-indigo-500 scale-110 border-white' : 'border-slate-800 hover:scale-105'
-                        }`}
-                        title={c.name}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* 2. Tamanho da Legenda */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Tamanho</span>
-                  <div className="flex p-0.5 rounded-lg bg-slate-950 border border-slate-900">
-                    {(['small', 'medium', 'large'] as const).map(size => (
-                      <button
-                        key={size}
-                        onClick={() => setTextSize(size)}
-                        className={`flex-1 py-1 text-[9px] font-bold rounded-md transition-all ${
-                          textSize === size 
-                            ? 'bg-[#161328] border border-[#7c3aed]/40 text-white' 
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {size === 'small' ? 'Peq' : size === 'medium' ? 'Méd' : 'Grd'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 3. Tipo de Fonte */}
-                <div className="flex flex-col gap-2">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Tipo de Fonte</span>
-                  <div className="flex p-0.5 rounded-lg bg-slate-950 border border-slate-900">
-                    {['Montserrat', 'Poppins', 'Inter', 'Impact'].map(f => (
-                      <button
-                        key={f}
-                        onClick={() => setFontFamily(f)}
-                        className={`flex-1 py-1 text-[9px] font-bold rounded-md transition-all ${
-                          fontFamily === f 
-                            ? 'bg-[#161328] border border-[#7c3aed]/40 text-white' 
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {f}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            {/* Abas no Topo (Estilo botões minimalistas/pílulas) */}
+            <div className="flex gap-2 shrink-0 select-none pb-1">
+              <button
+                onClick={() => setActiveTab('roteiro')}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-300 ${
+                  activeTab === 'roteiro'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 border border-indigo-500/30 text-white shadow-md shadow-indigo-600/10'
+                    : 'bg-[#060a13] border border-[#1e2d4a]/80 text-slate-400 hover:text-slate-200 hover:border-slate-800'
+                }`}
+              >
+                <span>📝</span> Revisar Roteiro
+              </button>
+              <button
+                onClick={() => setActiveTab('estilos')}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-300 ${
+                  activeTab === 'estilos'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 border border-indigo-500/30 text-white shadow-md shadow-indigo-600/10'
+                    : 'bg-[#060a13] border border-[#1e2d4a]/80 text-slate-400 hover:text-slate-200 hover:border-slate-800'
+                }`}
+              >
+                <span>🎨</span> Estilo & Mídias
+              </button>
             </div>
 
-            {/* Bloco 2: Gerar B-Rolls Inteligentes */}
-            <div className="bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.06)] rounded-2xl p-4 flex flex-col gap-3 shrink-0">
-              <div className="flex items-center gap-2 border-b border-slate-900/60 pb-2.5">
-                <Sparkles className="h-4.5 w-4.5 text-cyan-400" />
-                <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Mídias de Suporte e B-Rolls</h3>
-              </div>
-
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  <p className="text-xs text-slate-300 font-semibold leading-normal">
-                    {bRollsActive 
-                      ? 'Takes B-Roll gerados com IA foram inseridos. Você pode desativar ou regerar a qualquer momento.'
-                      : 'Adicione mídias de vídeo cinemáticas sobre as falas mais impactantes do seu vídeo para aumentar a retenção.'
-                    }
-                  </p>
-                </div>
-                
-                {isGeneratingBRolls ? (
-                  <div className="px-5 py-3.5 bg-slate-950 border border-blue-500/30 rounded-xl flex items-center gap-3">
-                    <Loader2 className="h-4 w-4 text-cyan-400 animate-spin" />
-                    <span className="text-[10px] text-slate-400 font-bold animate-pulse">{bRollLog}</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    {bRollsActive && (
-                      <button
-                        onClick={() => setBRollsActive(false)}
-                        className="px-4 py-3 bg-red-500/10 border border-red-500/30 hover:border-red-400 text-xs font-bold text-red-400 rounded-xl active:scale-95 transition-all"
-                      >
-                        Remover B-Rolls
-                      </button>
-                    )}
-                    <button
-                      onClick={handleGenerateBRolls}
-                      className="px-4.5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-xs font-extrabold text-white rounded-xl shadow-lg shadow-indigo-600/10 active:scale-95 transition-all"
-                    >
-                      {bRollsActive ? '⚡ Regerar B-Rolls com IA' : '⚡ Gerar B-Rolls e Takes com IA'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Bloco 3: Lista de Cenas / Legendas para edição */}
-            <div className="flex-1 min-h-0 flex flex-col gap-3">
-              <div className="flex items-center justify-between shrink-0">
-                <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider">Blocos de Legenda / Roteiro</span>
-                <button
-                  onClick={handleAddScene}
-                  className="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-blue-500/40 text-[9px] font-bold text-slate-400 hover:text-white rounded-lg transition-all flex items-center gap-1 active:scale-95"
-                >
-                  <Plus className="h-3 w-3" />
-                  Nova Cena
-                </button>
-              </div>
-
-              <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-3 scrollbar-thin scrollbar-thumb-slate-900 scrollbar-track-transparent">
-                {subtitles.map((scene, idx) => (
-                  <div 
-                    key={scene.id} 
-                    className="bg-[#060a13] border border-blue-500/30 rounded-xl p-4 flex gap-4 items-start relative hover:border-blue-500/50 transition-all duration-300"
+            {/* ABA 1: REVISAR ROTEIRO (Bloco de legendas em altura total) */}
+            {activeTab === 'roteiro' && (
+              <div className="flex-1 min-h-0 flex flex-col gap-3">
+                <div className="flex items-center justify-between shrink-0">
+                  <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider">Blocos de Legenda / Roteiro</span>
+                  <button
+                    onClick={handleAddScene}
+                    className="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-blue-500/40 text-[9px] font-bold text-slate-400 hover:text-white rounded-lg transition-all flex items-center gap-1 active:scale-95"
                   >
-                    <div className="h-5 w-5 rounded bg-slate-950 border border-slate-900 text-[9px] font-bold text-slate-400 flex items-center justify-center select-none">
-                      {idx + 1}
-                    </div>
+                    <Plus className="h-3 w-3" />
+                    Nova Cena
+                  </button>
+                </div>
 
-                    <div className="flex-1 flex flex-col gap-2">
-                      <textarea
-                        value={scene.text}
-                        onChange={(e) => handleSubtitleTextChange(scene.id, e.target.value)}
-                        className="w-full h-12 bg-transparent text-xs text-slate-200 outline-none resize-none leading-relaxed"
-                        placeholder="Edite a fala da cena..."
-                      />
-                      <div className="flex items-center justify-between text-[9px] text-slate-500 border-t border-slate-900/60 pt-2 font-semibold">
-                        <span>⏱️ Duração: {(scene.end - scene.start).toFixed(1)}s</span>
-                        <span>Intervalo: {scene.start.toFixed(1)}s - {scene.end.toFixed(1)}s</span>
+                <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-3 scrollbar-thin scrollbar-thumb-slate-900 scrollbar-track-transparent">
+                  {subtitles.map((scene, idx) => (
+                    <div 
+                      key={scene.id} 
+                      className="bg-[#060a13] border border-blue-500/30 rounded-xl p-4 flex gap-4 items-start relative hover:border-blue-500/50 transition-all duration-300"
+                    >
+                      <div className="h-5 w-5 rounded bg-slate-950 border border-slate-900 text-[9px] font-bold text-slate-400 flex items-center justify-center select-none">
+                        {idx + 1}
+                      </div>
+
+                      <div className="flex-1 flex flex-col gap-2">
+                        <textarea
+                          value={scene.text}
+                          onChange={(e) => handleSubtitleTextChange(scene.id, e.target.value)}
+                          className="w-full h-12 bg-transparent text-xs text-slate-200 outline-none resize-none leading-relaxed"
+                          placeholder="Edite a fala da cena..."
+                        />
+                        <div className="flex items-center justify-between text-[9px] text-slate-500 border-t border-slate-900/60 pt-2 font-semibold">
+                          <span>⏱️ Duração: {(scene.end - scene.start).toFixed(1)}s</span>
+                          <span>Intervalo: {scene.start.toFixed(1)}s - {scene.end.toFixed(1)}s</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleDeleteScene(scene.id)}
+                        className="p-1 rounded hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors"
+                        title="Excluir Cena"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ABA 2: ESTILO & MÍDIAS (Blocos de Customização e B-Rolls) */}
+            {activeTab === 'estilos' && (
+              <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-900 scrollbar-track-transparent">
+                {/* Bloco 1: Seletores de Legenda */}
+                <div className="bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.06)] rounded-2xl p-4 flex flex-col gap-3 shrink-0">
+                  <div className="flex items-center gap-2 border-b border-slate-900/60 pb-2.5">
+                    <Sliders className="h-4.5 w-4.5 text-cyan-400" />
+                    <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Ajuste de Design das Legendas</h3>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-6">
+                    {/* 1. Cor Neon */}
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Cor de Destaque</span>
+                      <div className="flex items-center gap-2">
+                        {[
+                          { name: 'Gold', val: '#FFD700', bg: 'bg-[#FFD700]' },
+                          { name: 'Cyan', val: '#00E5FF', bg: 'bg-[#00E5FF]' },
+                          { name: 'Pink', val: '#FF007F', bg: 'bg-[#FF007F]' },
+                          { name: 'Emerald', val: '#10B981', bg: 'bg-[#10B981]' },
+                          { name: 'Amber', val: '#F59E0B', bg: 'bg-[#F59E0B]' }
+                        ].map(c => (
+                          <button
+                            key={c.val}
+                            onClick={() => setNeonColor(c.val)}
+                            className={`h-6 w-6 rounded-full ${c.bg} transition-all border ${
+                              neonColor === c.val ? 'ring-2 ring-indigo-500 scale-110 border-white' : 'border-slate-800 hover:scale-105'
+                            }`}
+                            title={c.name}
+                          />
+                        ))}
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleDeleteScene(scene.id)}
-                      className="p-1 rounded hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors"
-                      title="Excluir Cena"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    {/* 2. Tamanho da Legenda */}
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Tamanho</span>
+                      <div className="flex p-0.5 rounded-lg bg-slate-950 border border-slate-900">
+                        {(['small', 'medium', 'large'] as const).map(size => (
+                          <button
+                            key={size}
+                            onClick={() => setTextSize(size)}
+                            className={`flex-1 py-1 text-[9px] font-bold rounded-md transition-all ${
+                              textSize === size 
+                                ? 'bg-[#161328] border border-[#7c3aed]/40 text-white' 
+                                : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            {size === 'small' ? 'Peq' : size === 'medium' ? 'Méd' : 'Grd'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 3. Tipo de Fonte */}
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Tipo de Fonte</span>
+                      <div className="flex p-0.5 rounded-lg bg-slate-950 border border-slate-900">
+                        {['Montserrat', 'Poppins', 'Inter', 'Impact'].map(f => (
+                          <button
+                            key={f}
+                            onClick={() => setFontFamily(f)}
+                            className={`flex-1 py-1 text-[9px] font-bold rounded-md transition-all ${
+                              fontFamily === f 
+                                ? 'bg-[#161328] border border-[#7c3aed]/40 text-white' 
+                                : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            {f}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                ))}
+                </div>
+
+                {/* Bloco 2: Gerar B-Rolls Inteligentes */}
+                <div className="bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.06)] rounded-2xl p-4 flex flex-col gap-3 shrink-0">
+                  <div className="flex-1">
+                    <p className="text-xs text-slate-300 font-semibold leading-normal">
+                      {bRollsActive 
+                        ? 'Takes B-Roll gerados com IA foram inseridos. Você pode desativar ou regerar a qualquer momento.'
+                        : 'Adicione mídias de vídeo cinemáticas sobre as falas mais impactantes do seu vídeo para aumentar a retenção.'
+                      }
+                    </p>
+                  </div>
+                  
+                  {isGeneratingBRolls ? (
+                    <div className="px-5 py-3.5 bg-slate-950 border border-blue-500/30 rounded-xl flex items-center gap-3">
+                      <Loader2 className="h-4 w-4 text-cyan-400 animate-spin" />
+                      <span className="text-[10px] text-slate-400 font-bold animate-pulse">{bRollLog}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-2">
+                      {bRollsActive && (
+                        <button
+                          onClick={() => setBRollsActive(false)}
+                          className="px-4 py-3 bg-red-500/10 border border-red-500/30 hover:border-red-400 text-xs font-bold text-red-400 rounded-xl active:scale-95 transition-all"
+                        >
+                          Remover B-Rolls
+                        </button>
+                      )}
+                      <button
+                        onClick={handleGenerateBRolls}
+                        className="px-4.5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-xs font-extrabold text-white rounded-xl shadow-lg shadow-indigo-600/10 active:scale-95 transition-all"
+                      >
+                        {bRollsActive ? '⚡ Regerar B-Rolls com IA' : '⚡ Gerar B-Rolls e Takes com IA'}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Bloco 4: Chat do Consultor base */}
             <div className="flex flex-col rounded-2xl border border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.12)] bg-[#060a13] p-4 h-[210px] shrink-0 justify-between font-sans">
