@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { 
@@ -29,7 +29,12 @@ import {
   Heart,
   MessageCircle,
   Share2,
-  Target
+  Target,
+  Clock,
+  Video,
+  Maximize2,
+  Download,
+  X
 } from 'lucide-react';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -94,12 +99,20 @@ export default function AutoEdicaoPage() {
     }
   ]);
 
+  // Estados de Zoom / Modal de Prévia
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomState, setZoomState] = useState<'idle' | 'zooming-in' | 'zoomed' | 'zooming-out'>('idle');
+  const [transitionStyle, setTransitionStyle] = useState<React.CSSProperties>({});
+  const [phoneTime, setPhoneTime] = useState('12:00');
+
   // Referências
   const fileInputRef = useRef<HTMLInputElement>(null);
   const phoneContainerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const bRollRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const sidebarWrapperRef = useRef<HTMLDivElement>(null);
+  const modalPlaceholderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -126,6 +139,19 @@ export default function AutoEdicaoPage() {
     loadUserCredits();
   }, []);
 
+  // Relógio do Celular
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      setPhoneTime(`${hours}:${minutes}`);
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Responsividade da largura do mockup do celular
   useEffect(() => {
     const updateWidth = () => {
@@ -140,7 +166,105 @@ export default function AutoEdicaoPage() {
       window.removeEventListener('resize', updateWidth);
       clearTimeout(timer);
     };
-  }, [step]);
+  }, [step, isZoomed, zoomState]);
+
+  const handleZoomIn = () => {
+    if (phoneContainerRef.current) {
+      const rect = phoneContainerRef.current.getBoundingClientRect();
+      setTransitionStyle({
+        position: 'fixed',
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        zIndex: 60,
+        margin: 0,
+        transition: 'none',
+      });
+      setIsZoomed(true);
+      setZoomState('zooming-in');
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (phoneContainerRef.current) {
+      setZoomState('zooming-out');
+      const targetRect = sidebarWrapperRef.current
+        ? sidebarWrapperRef.current.getBoundingClientRect()
+        : { top: 0, left: 0, width: 250, height: 444 };
+      
+      setTransitionStyle({
+        position: 'fixed',
+        top: targetRect.top,
+        left: targetRect.left,
+        width: targetRect.width,
+        height: targetRect.height,
+        zIndex: 60,
+        margin: 0,
+        transition: 'top 0.45s cubic-bezier(0.16, 1, 0.3, 1), left 0.45s cubic-bezier(0.16, 1, 0.3, 1), width 0.45s cubic-bezier(0.16, 1, 0.3, 1), height 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
+      });
+
+      const timer = setTimeout(() => {
+        setZoomState('idle');
+        setIsZoomed(false);
+        setTransitionStyle({});
+      }, 450);
+
+      return () => clearTimeout(timer);
+    }
+  };
+
+  useLayoutEffect(() => {
+    if (zoomState === 'zooming-in') {
+      const placeholder = modalPlaceholderRef.current;
+      const el = phoneContainerRef.current;
+      if (placeholder && el) {
+        const targetRect = placeholder.getBoundingClientRect();
+        
+        // Force reflow
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        el.offsetHeight;
+
+        setTransitionStyle({
+          position: 'fixed',
+          top: targetRect.top,
+          left: targetRect.left,
+          width: targetRect.width,
+          height: targetRect.height,
+          zIndex: 60,
+          margin: 0,
+          transition: 'top 0.45s cubic-bezier(0.16, 1, 0.3, 1), left 0.45s cubic-bezier(0.16, 1, 0.3, 1), width 0.45s cubic-bezier(0.16, 1, 0.3, 1), height 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
+        });
+
+        const timer = setTimeout(() => {
+          setZoomState('zoomed');
+        }, 450);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [zoomState]);
+
+  useEffect(() => {
+    if (zoomState !== 'zoomed') return;
+    const handleResize = () => {
+      if (modalPlaceholderRef.current) {
+        const rect = modalPlaceholderRef.current.getBoundingClientRect();
+        setTransitionStyle({
+          position: 'fixed',
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+          zIndex: 60,
+          margin: 0,
+          transition: 'none',
+        });
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [zoomState]);
 
   // Scroll automático do chat
   useEffect(() => {
@@ -1059,174 +1183,211 @@ export default function AutoEdicaoPage() {
 
           </div>
 
-          {/* COLUNA DIREITA: CELULAR SIMULADO COMO PLAYER FIXO DENTRO DE CARD PREMIUM */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col h-full min-h-0">
-            <div className="flex-1 min-h-0 w-full border border-blue-500/30 bg-[#060a13] shadow-[0_0_25px_rgba(59,130,246,0.06)] rounded-[2rem] p-6 flex flex-col items-center justify-between gap-4">
-              <h2 className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400 w-full text-left shrink-0">
-                Visualização em Tempo Real
+          {/* COLUNA DIREITA: PREVIEW DO CELULAR */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col items-center gap-6 relative select-none">
+            
+            {/* Title area for mockup */}
+            <div className="text-center flex flex-col gap-1 mt-1 shrink-0">
+              <h2 className="text-white font-bold text-base flex items-center justify-center gap-2 tracking-tight">
+                <Sparkles className="h-4 w-4 text-purple-400" />
+                Prévia do seu vídeo
               </h2>
+              <p className="text-xs text-slate-400 font-semibold flex items-center justify-center gap-1">
+                Veja como seu vídeo ficará
+                <span className="group relative inline-block cursor-help text-slate-550" aria-label="Ajuda sobre o Preview">
+                  <span className="text-[10px] bg-slate-950 border border-slate-800 rounded-full h-4 w-4 flex items-center justify-center normal-case font-bold">i</span>
+                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 rounded-xl bg-slate-950 border border-[#16223f]/80 p-2.5 text-[9px] text-slate-350 font-medium leading-normal opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 text-left shadow-2xl normal-case">
+                    A prévia dinâmica simula legendas e áudio sincronizados para visualização do conteúdo final.
+                  </span>
+                </span>
+              </p>
+            </div>
 
-              <div className="flex-1 min-h-0 w-full flex items-center justify-center">
-                <div 
-                  ref={phoneContainerRef}
-                  className="h-full max-h-[530px] aspect-[9/16] bg-[#060a13] border border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.12)] rounded-[2.5rem] border-[8px] border-slate-950 overflow-hidden flex flex-col justify-end relative"
-                >
-                  {/* Fake Status Bar */}
-                  <div className="absolute top-2.5 inset-x-5 flex justify-between items-center text-[8px] font-bold text-white/70 z-45 pointer-events-none select-none">
-                    <span>23:25</span>
-                    <div className="flex items-center gap-1.5">
-                      <span>📶</span>
-                      <span>📶</span>
-                      <span>🔋</span>
+            {/* Sidebar wrapper that acts as the layout anchor and visual placeholder */}
+            <div 
+              ref={sidebarWrapperRef} 
+              className="relative w-full max-w-[290px] aspect-[9/16] flex items-center justify-center"
+            >
+              {/* Visual dashed outline shown only when the phone has zoomed away */}
+              {zoomState !== 'idle' && (
+                <div className="absolute inset-0 rounded-[2.5rem] bg-slate-950/20 border-2 border-dashed border-slate-800/40 pointer-events-none flex flex-col items-center justify-center p-4 text-center">
+                  <span className="text-[10px] text-slate-555 font-bold tracking-wider uppercase">Visualizando</span>
+                </div>
+              )}
+
+              {/* Mockup do Celular */}
+              <div 
+                ref={phoneContainerRef}
+                className={`aspect-[9/16] rounded-[2.5rem] border-[8px] border-slate-950 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col justify-end ${
+                  zoomState === 'idle' ? 'relative w-full h-full z-25' : ''
+                }`}
+                style={transitionStyle}
+              >
+                {/* Fake Status Bar */}
+                <div className="absolute top-1.5 inset-x-0 h-6 px-6 flex items-center justify-between text-[8px] font-semibold text-white/95 z-45 pointer-events-none select-none">
+                  <span>{phoneTime}</span>
+                  <div className="flex items-center gap-1.5">
+                    {/* Signal strength bar */}
+                    <svg className="w-2 h-2 fill-current" viewBox="0 0 24 24">
+                      <path d="M2 22h20V2z" />
+                    </svg>
+                    {/* Wifi */}
+                    <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 24 24">
+                      <path d="M12 21l-12-14.3c.3-.3 4.8-4.7 12-4.7s11.7 4.4 12 4.7l-12 14.3z" />
+                    </svg>
+                    {/* Battery */}
+                    <div className="w-3.5 h-1.5 border border-white/80 rounded-2xs p-0.25 flex items-center">
+                      <div className="h-full w-full bg-white rounded-3xs"></div>
                     </div>
                   </div>
+                </div>
 
-                  {/* Dynamic Island / Notch */}
-                  <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-45 flex items-center justify-center pointer-events-none">
-                    <div className="w-1.5 h-1.5 bg-slate-900 rounded-full mr-1"></div>
-                    <div className="w-3.5 h-0.5 bg-slate-900 rounded-full mx-1"></div>
-                    <div className="w-1.5 h-1.5 bg-blue-900/40 rounded-full ml-1"></div>
-                  </div>
+                {/* Dynamic Island / Notch */}
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-45 flex items-center justify-center pointer-events-none">
+                  <div className="w-1.5 h-1.5 bg-slate-900 rounded-full mr-1"></div>
+                  <div className="w-3.5 h-0.5 bg-slate-900 rounded-full mx-1"></div>
+                  <div className="w-1.5 h-1.5 bg-blue-900/40 rounded-full ml-1"></div>
+                </div>
 
-                  {/* Bottom Home Indicator Pill */}
-                  <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-20 h-1 bg-white/40 rounded-full z-45 pointer-events-none" />
+                {/* Bottom Home Indicator Pill */}
+                <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-20 h-1 bg-white/40 rounded-full z-45 pointer-events-none" />
 
-                  {/* Badge de IA no topo */}
-                  {videoUrl && (
-                    <div className="absolute top-9 left-4 z-35 pointer-events-none select-none">
-                      <div className="bg-[#050b14]/75 backdrop-blur-md border border-amber-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-md">
-                        <span className="text-amber-400 text-[8px]">✨</span>
-                        <span className="text-[7.5px] font-extrabold text-amber-400 tracking-wider uppercase">Exemplo real gerado com IA</span>
-                      </div>
+                {/* Badge de IA no topo */}
+                {videoUrl && (
+                  <div className="absolute top-9 left-4 z-35 pointer-events-none select-none">
+                    <div className="bg-[#0a1122]/90 border border-slate-700/50 backdrop-blur-md text-[9px] text-yellow-400 font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-md">
+                      <span>✨</span>
+                      <span>Exemplo real gerado com IA</span>
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {/* Video Player */}
-                  {videoUrl ? (
-                    <div className="w-full h-full relative flex flex-col justify-end group/player">
-                      {/* B-Roll player overlay under the subtitles if active */}
-                      {bRollsActive && bRollUrls.map((url, idx) => {
-                        const isActive = idx === activeBRollIdx;
-                        return (
-                          <video
-                            key={`broll-player-${idx}`}
-                            ref={(el) => { bRollRefs.current[idx] = el; }}
-                            src={url}
-                            preload="auto"
+                {/* Video Player */}
+                {videoUrl ? (
+                  <div className="w-full h-full relative flex flex-col justify-end group/player">
+                    {/* B-Roll player overlay under the subtitles if active */}
+                    {bRollsActive && bRollUrls.map((url, idx) => {
+                      const isActive = idx === activeBRollIdx;
+                      return (
+                        <video
+                          key={`broll-player-${idx}`}
+                          ref={(el) => { bRollRefs.current[idx] = el; }}
+                          src={url}
+                          preload="auto"
+                          style={{
+                            opacity: isActive ? 1 : 0,
+                            pointerEvents: isActive ? 'auto' : 'none',
+                            zIndex: isActive ? 20 : 10
+                          }}
+                          loop
+                          playsInline
+                          muted={true}
+                          className="absolute inset-0 w-full h-full object-cover bg-black"
+                        />
+                      );
+                    })}
+
+                    {/* Main user video element */}
+                    <video
+                      ref={videoRef}
+                      src={videoUrl}
+                      onTimeUpdate={handleTimeUpdate}
+                      onLoadedMetadata={handleLoadedMetadata}
+                      onClick={togglePlay}
+                      loop
+                      playsInline
+                      style={{
+                        // If B-roll is active and showing, we push the user video behind the B-roll visually
+                        opacity: bRollsActive && activeBRollIdx !== -1 ? 0 : 1,
+                        zIndex: 15
+                      }}
+                      className="absolute inset-0 w-full h-full object-cover cursor-pointer bg-black"
+                    />
+
+                    {/* Reels Overlays: Heart, Comment, Share (como no segundo screenshot) */}
+                    <div className="absolute right-3 bottom-24 flex flex-col items-center gap-4.5 z-35 pointer-events-auto select-none">
+                      <button className="flex flex-col items-center gap-1 group/btn">
+                        <div className="h-8.5 w-8.5 rounded-full bg-black/30 backdrop-blur-sm border border-white/5 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-md">
+                          <Heart className="h-4 w-4" />
+                        </div>
+                        <span className="text-[8.5px] font-bold text-white tracking-wider text-shadow">12.8K</span>
+                      </button>
+                      
+                      <button className="flex flex-col items-center gap-1 group/btn">
+                        <div className="h-8.5 w-8.5 rounded-full bg-black/30 backdrop-blur-sm border border-white/5 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-md">
+                          <MessageCircle className="h-4 w-4" />
+                        </div>
+                        <span className="text-[8.5px] font-bold text-white tracking-wider text-shadow">352</span>
+                      </button>
+
+                      <button className="flex flex-col items-center gap-1 group/btn">
+                        <div className="h-8.5 w-8.5 rounded-full bg-black/30 backdrop-blur-sm border border-white/5 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-md">
+                          <Share2 className="h-4 w-4" />
+                        </div>
+                        <span className="text-[8.5px] font-bold text-white tracking-wider text-shadow">2.1K</span>
+                      </button>
+                    </div>
+
+                    {/* Legenda Estilizada sobreposta */}
+                    {(() => {
+                      const activeSub = subtitles.find(sub => currentTime >= sub.start && currentTime <= sub.end);
+                      if (!activeSub || !activeSub.text.trim()) return null;
+
+                      const words = activeSub.text.trim().split(/\s+/);
+                      const totalWords = words.length;
+                      const duration = activeSub.end - activeSub.start;
+                      const elapsed = currentTime - activeSub.start;
+
+                      const activeWordIdx = totalWords > 1 && duration > 0
+                        ? Math.min(Math.floor((elapsed / duration) * totalWords), totalWords - 1)
+                        : 0;
+
+                      // Ajustar tamanhos de fonte baseados no phoneWidth e selector
+                      const sizeMult = textSize === 'small' ? 0.055 : textSize === 'large' ? 0.090 : 0.075;
+
+                      return (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'flex-end',
+                            paddingBottom: `${phoneWidth * 0.35}px`,
+                            paddingLeft: `${phoneWidth * 0.08}px`,
+                            paddingRight: `${phoneWidth * 0.08}px`,
+                            pointerEvents: 'none',
+                            zIndex: 35
+                          }}
+                        >
+                          <h1
                             style={{
-                              opacity: isActive ? 1 : 0,
-                              pointerEvents: isActive ? 'auto' : 'none',
-                              zIndex: isActive ? 20 : 10
-                            }}
-                            loop
-                            playsInline
-                            muted={true}
-                            className="absolute inset-0 w-full h-full object-cover bg-black"
-                          />
-                        );
-                      })}
-
-                      {/* Main user video element */}
-                      <video
-                        ref={videoRef}
-                        src={videoUrl}
-                        onTimeUpdate={handleTimeUpdate}
-                        onLoadedMetadata={handleLoadedMetadata}
-                        onClick={togglePlay}
-                        loop
-                        playsInline
-                        style={{
-                          // If B-roll is active and showing, we push the user video behind the B-roll visually
-                          opacity: bRollsActive && activeBRollIdx !== -1 ? 0 : 1,
-                          zIndex: 15
-                        }}
-                        className="absolute inset-0 w-full h-full object-cover cursor-pointer bg-black"
-                      />
-
-                      {/* Reels Overlays: Heart, Comment, Share (como no segundo screenshot) */}
-                      <div className="absolute right-3 bottom-24 flex flex-col items-center gap-4.5 z-35 pointer-events-auto select-none">
-                        <button className="flex flex-col items-center gap-1 group/btn">
-                          <div className="h-8.5 w-8.5 rounded-full bg-black/30 backdrop-blur-sm border border-white/5 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-md">
-                            <Heart className="h-4 w-4" />
-                          </div>
-                          <span className="text-[8.5px] font-bold text-white tracking-wider text-shadow">12.8K</span>
-                        </button>
-                        
-                        <button className="flex flex-col items-center gap-1 group/btn">
-                          <div className="h-8.5 w-8.5 rounded-full bg-black/30 backdrop-blur-sm border border-white/5 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-md">
-                            <MessageCircle className="h-4 w-4" />
-                          </div>
-                          <span className="text-[8.5px] font-bold text-white tracking-wider text-shadow">352</span>
-                        </button>
-
-                        <button className="flex flex-col items-center gap-1 group/btn">
-                          <div className="h-8.5 w-8.5 rounded-full bg-black/30 backdrop-blur-sm border border-white/5 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 shadow-md">
-                            <Share2 className="h-4 w-4" />
-                          </div>
-                          <span className="text-[8.5px] font-bold text-white tracking-wider text-shadow">2.1K</span>
-                        </button>
-                      </div>
-
-                      {/* Legenda Estilizada sobreposta */}
-                      {(() => {
-                        const activeSub = subtitles.find(sub => currentTime >= sub.start && currentTime <= sub.end);
-                        if (!activeSub || !activeSub.text.trim()) return null;
-
-                        const words = activeSub.text.trim().split(/\s+/);
-                        const totalWords = words.length;
-                        const duration = activeSub.end - activeSub.start;
-                        const elapsed = currentTime - activeSub.start;
-
-                        const activeWordIdx = totalWords > 1 && duration > 0
-                          ? Math.min(Math.floor((elapsed / duration) * totalWords), totalWords - 1)
-                          : 0;
-
-                        // Ajustar tamanhos de fonte baseados no phoneWidth e selector
-                        const sizeMult = textSize === 'small' ? 0.055 : textSize === 'large' ? 0.090 : 0.075;
-
-                        return (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              bottom: 0,
+                              fontFamily: `${fontFamily}, sans-serif`,
+                              fontSize: `${phoneWidth * sizeMult}px`,
+                              fontWeight: 900,
+                              textTransform: 'uppercase',
+                              textAlign: 'center',
+                              lineHeight: 1.25,
+                              letterSpacing: '1px',
                               display: 'flex',
+                              flexWrap: 'wrap',
                               justifyContent: 'center',
-                              alignItems: 'flex-end',
-                              paddingBottom: `${phoneWidth * 0.35}px`,
-                              paddingLeft: `${phoneWidth * 0.08}px`,
-                              paddingRight: `${phoneWidth * 0.08}px`,
-                              pointerEvents: 'none',
-                              zIndex: 35
+                              rowGap: '4px',
+                              textShadow: `
+                                -2px -2px 0 #000,
+                                 2px -2px 0 #000,
+                                -2px  2px 0 #000,
+                                 2px  2px 0 #000,
+                                 0px 4px 10px rgba(0, 0, 0, 0.8)
+                              `
                             }}
                           >
-                            <h1
-                              style={{
-                                fontFamily: `${fontFamily}, sans-serif`,
-                                fontSize: `${phoneWidth * sizeMult}px`,
-                                fontWeight: 900,
-                                textTransform: 'uppercase',
-                                textAlign: 'center',
-                                lineHeight: 1.25,
-                                letterSpacing: '1px',
-                                display: 'flex',
-                                flexWrap: 'wrap',
-                                justifyContent: 'center',
-                                rowGap: '4px',
-                                textShadow: `
-                                  -2px -2px 0 #000,
-                                   2px -2px 0 #000,
-                                  -2px  2px 0 #000,
-                                   2px  2px 0 #000,
-                                   0px 4px 10px rgba(0, 0, 0, 0.8)
-                                `
-                              }}
-                            >
-                              {words.map((word, index) => {
-                                const isWordActive = index === activeWordIdx;
-                                return (
+                            {words.map((word, index) => {
+                              const isWordActive = index === activeWordIdx;
+                              return (
                                   <span
                                     key={index}
                                     style={{
@@ -1239,59 +1400,100 @@ export default function AutoEdicaoPage() {
                                   >
                                     {word}
                                   </span>
-                                );
-                              })}
-                            </h1>
-                          </div>
-                        );
-                      })()}
+                              );
+                            })}
+                          </h1>
+                        </div>
+                      );
+                    })()}
 
-                      {/* Controles de Play/Pause na base */}
-                      <div className="absolute bottom-4 inset-x-4 flex items-center justify-between z-40 pointer-events-auto">
-                        <button 
-                          onClick={togglePlay}
-                          className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95"
-                        >
-                          {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 fill-current ml-0.5" />}
-                        </button>
+                    {/* Controles de Play/Pause na base */}
+                    <div className="absolute bottom-4 inset-x-4 flex items-center justify-between z-40 pointer-events-auto">
+                      <button 
+                        onClick={togglePlay}
+                        className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95"
+                      >
+                        {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 fill-current ml-0.5" />}
+                      </button>
 
-                        <button 
-                          onClick={toggleMute}
-                          className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95"
-                        >
-                          {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-                        </button>
-                      </div>
-
-                      {/* Barra de Progresso */}
-                      <div className="absolute bottom-0 inset-x-0 h-1 bg-white/15 z-40 select-none">
-                        <div 
-                          className="h-full bg-gradient-to-r from-cyan-500 to-blue-500" 
-                          style={{ width: `${videoDuration ? (currentTime / videoDuration) * 100 : 0}%` }}
-                        />
-                      </div>
-
+                      <button 
+                        onClick={toggleMute}
+                        className="h-8.5 w-8.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95"
+                      >
+                        {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                      </button>
                     </div>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-slate-600 text-[10px] font-bold p-6 text-center leading-relaxed">
-                      Aguardando envio do vídeo para reproduzir...
+
+                    {/* Barra de Progresso */}
+                    <div className="absolute bottom-0 inset-x-0 h-1 bg-white/15 z-40 select-none">
+                      <div 
+                        className="h-full bg-gradient-to-r from-cyan-500 to-blue-500" 
+                        style={{ width: `${videoDuration ? (currentTime / videoDuration) * 100 : 0}%` }}
+                      />
                     </div>
-                  )}
+
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-slate-600 text-[10px] font-bold p-6 text-center leading-relaxed">
+                    Aguardando envio do vídeo para reproduzir...
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Informações Extras de Vídeo abaixo do Celular */}
+            <div className="w-full max-w-[290px] bg-[#040812]/50 border border-slate-900 rounded-2xl p-3 px-3.5 flex justify-between items-center gap-1.5 select-none shrink-0 shadow-sm mt-1">
+              {/* Formato */}
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 text-[10px] font-extrabold select-none">
+                  9:16
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wide leading-none">Formato</span>
+                  <span className="text-[10px] text-slate-200 font-extrabold mt-0.5">Reels</span>
                 </div>
               </div>
 
-              {/* Informações de formato e duração */}
-              <div className="text-center shrink-0">
-                <p className="text-[11px] text-slate-400 font-bold flex items-center justify-center gap-1.5">
-                  <span>📱 Vídeo completo em {videoDuration ? Math.round(videoDuration) : '15'}s</span>
-                  <span className="text-slate-600">•</span>
-                  <span>Formato Reels 9:16</span>
-                </p>
+              {/* Separador vertical */}
+              <div className="h-6 w-px bg-slate-900/60" />
+
+              {/* Duração */}
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                  <Clock className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wide leading-none">Duração</span>
+                  <span className="text-[10px] text-slate-200 font-extrabold mt-0.5">{videoDuration ? `${Math.round(videoDuration)} segundos` : '15 segundos'}</span>
+                </div>
               </div>
 
-              {/* Botão Salvar e Exportar */}
-              {videoUrl && (
-                <button 
+              {/* Separador vertical */}
+              <div className="h-6 w-px bg-slate-900/60" />
+
+              {/* Status */}
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                  <Video className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wide leading-none">Status</span>
+                  <span className="text-[10px] text-indigo-400 font-extrabold mt-0.5 whitespace-nowrap">Pronto</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Botões de Ação do Player */}
+            {videoUrl && !isZoomed && (
+              <div className="flex gap-3 w-full justify-center z-20 max-w-[290px] mt-0.5 select-none shrink-0">
+                <button
+                  onClick={handleZoomIn}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-3 text-xs font-bold bg-[#15233c]/25 border border-[#15233c]/45 text-slate-250 rounded-xl hover:bg-[#1e293b] hover:text-white transition-all cursor-pointer shadow-sm shadow-black/25 active:scale-95"
+                >
+                  <Maximize2 className="h-3.5 w-3.5 text-slate-400" />
+                  Aumentar
+                </button>
+                <button
                   onClick={() => {
                     alert('Seu vídeo editado foi enviado para renderização final! Você receberá uma notificação em instantes.');
                     setStep('upload');
@@ -1299,13 +1501,83 @@ export default function AutoEdicaoPage() {
                     setSubtitles([]);
                     setBRollsActive(false);
                   }}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 py-3.5 rounded-xl font-bold text-white transition-all active:scale-[0.99] text-xs shadow-lg shadow-indigo-500/10 flex items-center justify-center gap-1.5 shrink-0"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-3 text-xs font-extrabold bg-gradient-to-r from-[#2563eb] via-[#6366f1] to-[#a855f7] text-white rounded-xl hover:opacity-95 active:scale-95 transition-all cursor-pointer shadow-md shadow-indigo-500/10"
                 >
-                  <span>⚡ Renderizar Vídeo HD Final</span>
-                  <span className="text-[10px] text-white/70 font-semibold normal-case">(Consome 1 crédito)</span>
+                  <span>⚡ Renderizar HD</span>
                 </button>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Modal Zoom Portal Elements */}
+            {isZoomed && (
+              <div 
+                className={`fixed inset-0 z-40 bg-[#02050c]/90 pointer-events-auto cursor-pointer ${
+                  zoomState === 'zooming-out' ? 'animate-backdrop-out' : 'animate-backdrop-in'
+                }`}
+                onClick={handleZoomOut}
+              />
+            )}
+
+            {/* Modal Card Centered container */}
+            {isZoomed && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+                <div className={`bg-[#060a13] border border-[#15233c]/60 rounded-3xl p-8 flex flex-col items-center max-w-[480px] w-full relative shadow-2xl pointer-events-auto ${
+                  zoomState === 'zooming-out' ? 'animate-card-out' : 'animate-card-in'
+                }`}>
+                  {/* Close button */}
+                  <button 
+                    onClick={handleZoomOut}
+                    className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-full transition-all cursor-pointer"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+
+                  {/* Header */}
+                  <div className="text-center mb-6">
+                    <h3 className="text-white font-bold text-lg">Preview 9:16</h3>
+                    <p className="text-slate-400 text-xs mt-1">Veja como seu vídeo ficará no formato vertical (9:16).</p>
+                  </div>
+
+                  {/* Modal Placeholder for the Phone mockup */}
+                  <div 
+                    ref={modalPlaceholderRef}
+                    className="w-[300px] sm:w-[340px] md:w-[370px] aspect-[9/16] bg-slate-950/20 border-2 border-dashed border-slate-800/20 rounded-[2.5rem] pointer-events-none mb-6"
+                  />
+
+                  {/* Buttons row */}
+                  {videoUrl && (
+                    <div className="flex gap-3 w-full justify-center mb-4 max-w-[370px]">
+                      <button
+                        onClick={() => {
+                          alert('Seu vídeo editado foi enviado para renderização final! Você receberá uma notificação em instantes.');
+                          setStep('upload');
+                          setVideoUrl(null);
+                          setSubtitles([]);
+                          setBRollsActive(false);
+                          setIsZoomed(false);
+                          setZoomState('idle');
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-4 py-3 text-xs font-semibold bg-[#0c1426] border border-[#15233c]/60 hover:bg-[#15233c] text-white rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
+                      >
+                        <span>⚡ Renderizar HD</span>
+                      </button>
+                      
+                      <button
+                        onClick={handleZoomOut}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-4 py-3 text-xs font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
+                      >
+                        Fechar
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Info Text */}
+                  <p className="text-[10px] text-slate-500 text-center">
+                    Clique em Renderizar HD para iniciar a exportação final.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>

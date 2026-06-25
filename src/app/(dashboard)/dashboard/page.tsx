@@ -28,7 +28,8 @@ import {
   MicOff,
   Heart,
   MessageCircle,
-  Share2
+  Share2,
+  Video
 } from 'lucide-react';
 import { useDashboard } from '../../../context/DashboardContext';
 import { TabType, LanguageType, ToneType, DurationType } from '../../../types/dashboard';
@@ -1163,13 +1164,30 @@ export default function CreationDashboard() {
       </section>
 
       {/* Coluna da Direita: Preview */}
-      <section className="col-span-12 lg:col-span-4 flex flex-col gap-5 relative">
-        <div className={`bg-[#060a13]/40 border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.08)] rounded-3xl p-6 flex flex-col items-center gap-5 ${isZoomed ? '' : 'backdrop-blur-md'}`}>
-          {/* Sidebar wrapper that acts as the layout anchor and visual placeholder */}
-          <div 
-            ref={sidebarWrapperRef} 
-            className="relative w-full max-w-[255px] aspect-[9/16] flex items-center justify-center"
-          >
+      <section className="col-span-12 lg:col-span-4 flex flex-col items-center gap-6 relative select-none">
+        
+        {/* Title area for mockup */}
+        <div className="text-center flex flex-col gap-1 mt-1">
+          <h2 className="text-white font-bold text-base flex items-center justify-center gap-2 tracking-tight">
+            <Sparkles className="h-4 w-4 text-purple-400" />
+            Prévia do seu vídeo
+          </h2>
+          <p className="text-xs text-slate-400 font-semibold flex items-center justify-center gap-1">
+            Veja como seu vídeo ficará
+            <span className="group relative inline-block cursor-help text-slate-500" aria-label="Ajuda sobre o Preview">
+              <span className="text-[10px] bg-slate-950 border border-slate-800 rounded-full h-4 w-4 flex items-center justify-center normal-case font-bold">i</span>
+              <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 rounded-xl bg-slate-950 border border-[#16223f]/80 p-2.5 text-[9px] text-slate-350 font-medium leading-normal opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 text-left shadow-2xl normal-case">
+                A prévia dinâmica simula legendas e áudio sincronizados para visualização do conteúdo final.
+              </span>
+            </span>
+          </p>
+        </div>
+
+        {/* Sidebar wrapper that acts as the layout anchor and visual placeholder */}
+        <div 
+          ref={sidebarWrapperRef} 
+          className="relative w-full max-w-[290px] aspect-[9/16] flex items-center justify-center"
+        >
             {/* Visual dashed outline shown only when the phone has zoomed away */}
             {zoomState !== 'idle' && (
               <div className="absolute inset-0 rounded-[2.5rem] bg-slate-950/20 border-2 border-dashed border-slate-800/40 pointer-events-none flex flex-col items-center justify-center p-4 text-center">
@@ -1524,17 +1542,53 @@ export default function CreationDashboard() {
           </div>
 
           {/* Informações Extras de Vídeo abaixo do Celular */}
-          <div className="text-center select-none font-semibold text-slate-400 text-xs flex items-center gap-1.5 justify-center">
-            <span>📱</span>
-            <span>Video completo em 15s • Formato Reels 9:16</span>
+          <div className="w-full max-w-[290px] bg-[#040812]/50 border border-slate-900 rounded-2xl p-3 px-3.5 flex justify-between items-center gap-1.5 select-none shrink-0 shadow-sm mt-1">
+            {/* Formato */}
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 text-[10px] font-extrabold select-none">
+                9:16
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wide leading-none">Formato</span>
+                <span className="text-[10px] text-slate-200 font-extrabold mt-0.5">Reels</span>
+              </div>
+            </div>
+
+            {/* Separador vertical */}
+            <div className="h-6 w-px bg-slate-900/60" />
+
+            {/* Duração */}
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                <Clock className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wide leading-none">Duração</span>
+                <span className="text-[10px] text-slate-200 font-extrabold mt-0.5">15 segundos</span>
+              </div>
+            </div>
+
+            {/* Separador vertical */}
+            <div className="h-6 w-px bg-slate-900/60" />
+
+            {/* Status */}
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                <Video className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wide leading-none">Status</span>
+                <span className="text-[10px] text-indigo-400 font-extrabold mt-0.5 whitespace-nowrap">Pronto</span>
+              </div>
+            </div>
           </div>
 
           {/* Botões de Ação do Player */}
           {videoState === 'ready' && !isZoomed && (
-            <div className="flex gap-3 w-full justify-center z-20 max-w-[255px] mt-1 select-none">
+            <div className="flex gap-3 w-full justify-center z-20 max-w-[290px] mt-0.5 select-none shrink-0">
               <button
                 onClick={handleZoomIn}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-[11px] font-bold bg-[#15233c]/35 border border-[#15233c]/60 text-slate-200 rounded-xl hover:bg-[#1e293b] hover:text-white transition-all cursor-pointer shadow-sm shadow-black/20"
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-3 text-xs font-bold bg-[#15233c]/25 border border-[#15233c]/45 text-slate-250 rounded-xl hover:bg-[#1e293b] hover:text-white transition-all cursor-pointer shadow-sm shadow-black/25 active:scale-95"
               >
                 <Maximize2 className="h-3.5 w-3.5 text-slate-400" />
                 Aumentar
@@ -1548,18 +1602,17 @@ export default function CreationDashboard() {
                   }
                 }}
                 disabled={isDownloading || isRendering}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-[11px] font-bold bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl hover:opacity-95 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-blue-500/5"
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-3 text-xs font-extrabold bg-gradient-to-r from-[#2563eb] via-[#6366f1] to-[#a855f7] text-white rounded-xl hover:opacity-95 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-indigo-500/10"
               >
                 {isDownloading || isRendering ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <Download className="h-3.5 w-3.5" />
                 )}
-                {isRendering ? `Criando... (${renderProgress}%)` : 'Baixar MP4'}
+                {isRendering ? `Criando...` : 'Baixar MP4'}
               </button>
             </div>
           )}
-        </div>
 
         {/* Modal Backdrop overlay */}
         {isZoomed && (
