@@ -209,7 +209,7 @@ export default function AutoEdicaoPage() {
     }
   };
 
-  // Upload real para o Supabase Storage
+  // Upload real para o AWS S3 via Presigned URL
   const handleVideoUpload = async (file: File) => {
     // Validar tipo de vídeo e tamanho aproximado
     if (!file.type.startsWith('video/')) {
@@ -224,25 +224,43 @@ export default function AutoEdicaoPage() {
     setProcessingLog('Fazendo upload seguro para o storage do Aether...');
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `auto-edicao/${userId || 'anon'}/${Date.now()}.${fileExt}`;
+      // 1. Solicitar a geração de uma Presigned URL ao backend Next.js (requisição ultra-leve)
+      const presignedRes = await fetch('/api/upload/s3', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+        }),
+      });
 
-      const { data, error } = await supabase.storage
-        .from('editor_temp_uploads')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-
-      if (error) {
-        throw new Error(`Falha no upload para o Supabase Storage: ${error.message}`);
+      if (!presignedRes.ok) {
+        throw new Error('Falha ao gerar link de upload pré-assinado.');
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('editor_temp_uploads')
-        .getPublicUrl(fileName);
+      const presignedData = await presignedRes.json();
+      if (!presignedData.success || !presignedData.uploadUrl) {
+        throw new Error(presignedData.error || 'Erro ao processar chaves de segurança.');
+      }
 
-      setVideoUrl(publicUrl);
+      const { uploadUrl, fileUrl } = presignedData;
+
+      // 2. Fazer o upload do vídeo direto do navegador para o AWS S3
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error('Falha na transferência direta para a AWS S3.');
+      }
+
+      setVideoUrl(fileUrl);
       setUploading(false);
       
       // Iniciar a simulação de transcrição baseada em IA
