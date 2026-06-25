@@ -458,7 +458,7 @@ export default function AutoEdicaoPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-100px)] flex flex-col gap-6 relative select-none">
+    <div className="h-[calc(100vh-125px)] flex flex-col gap-4 relative select-none overflow-hidden pb-1">
       
       {/* Estilos dinâmicos de fonte no cabeçalho do documento */}
       <style>{`
@@ -501,9 +501,9 @@ export default function AutoEdicaoPage() {
 
       {/* ESTADO 1: TELA DE UPLOAD (PORTA DE ENTRADA) */}
       {step === 'upload' && (
-        <div className="grid grid-cols-12 gap-8 items-stretch flex-1">
+        <div className="grid grid-cols-12 gap-8 items-stretch flex-1 min-h-0">
           {/* Esquerda: Upload Drag & Drop */}
-          <div className="col-span-12 lg:col-span-8 flex flex-col justify-center items-center gap-6 bg-[#060a13]/30 border border-blue-500/20 rounded-3xl p-8 min-h-[480px]">
+          <div className="col-span-12 lg:col-span-8 flex flex-col justify-center items-center gap-6 bg-[#060a13]/30 border border-blue-500/20 rounded-3xl p-8 h-full min-h-0">
             <div className="max-w-md text-center flex flex-col items-center gap-4">
               <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/10 mb-2">
                 <FileVideo className="h-7 w-7" />
@@ -591,7 +591,7 @@ export default function AutoEdicaoPage() {
 
       {/* ESTADO 2: TELA DE PROCESSAMENTO */}
       {step === 'processing' && (
-        <div className="flex flex-col justify-center items-center gap-6 flex-1 min-h-[400px] select-none bg-[#050914]/20 border border-blue-500/10 rounded-3xl p-10">
+        <div className="flex flex-col justify-center items-center gap-6 flex-1 min-h-0 select-none bg-[#050914]/20 border border-blue-500/10 rounded-3xl p-10">
           <div className="relative h-16 w-16 flex items-center justify-center">
             <Loader2 className="h-10 w-10 text-cyan-400 animate-spin absolute" />
             <div className="h-6 w-6 rounded-full bg-cyan-500/10 border border-cyan-400/20 flex items-center justify-center text-cyan-400 text-xs font-bold animate-pulse">
@@ -616,14 +616,14 @@ export default function AutoEdicaoPage() {
 
       {/* ESTADO 3: O EDITOR DE AUTO-EDIÇÃO (PÓS-UPLOAD) */}
       {step === 'editor' && (
-        <div className="grid grid-cols-12 gap-8 items-start flex-1 select-none">
+        <div className="grid grid-cols-12 gap-6 items-stretch flex-1 min-h-0 h-full select-none">
           
           {/* COLUNA ESQUERDA: PAINEL DE CONTROLE, EDITOR DE TEXTO E CHAT */}
-          <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
+          <div className="col-span-12 lg:col-span-8 flex flex-col gap-4 h-full min-h-0">
             
             {/* Bloco 1: Seletores de Legenda */}
-            <div className="bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.06)] rounded-2xl p-5 flex flex-col gap-4">
-              <div className="flex items-center gap-2 border-b border-slate-900/60 pb-3">
+            <div className="bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.06)] rounded-2xl p-4 flex flex-col gap-3 shrink-0">
+              <div className="flex items-center gap-2 border-b border-slate-900/60 pb-2.5">
                 <Sliders className="h-4.5 w-4.5 text-cyan-400" />
                 <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Ajuste de Design das Legendas</h3>
               </div>
@@ -695,15 +695,10 @@ export default function AutoEdicaoPage() {
             </div>
 
             {/* Bloco 2: Gerar B-Rolls Inteligentes */}
-            <div className="bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.06)] rounded-2xl p-5 flex flex-col gap-4">
-              <div className="flex items-center justify-between border-b border-slate-900/60 pb-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4.5 w-4.5 text-cyan-400" />
-                  <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Mídias de Suporte e B-Rolls</h3>
-                </div>
-                {bRollsActive && (
-                  <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md animate-pulse">Ativo</span>
-                )}
+            <div className="bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.06)] rounded-2xl p-4 flex flex-col gap-3 shrink-0">
+              <div className="flex items-center gap-2 border-b border-slate-900/60 pb-2.5">
+                <Sparkles className="h-4.5 w-4.5 text-cyan-400" />
+                <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Mídias de Suporte e B-Rolls</h3>
               </div>
 
               <div className="flex items-center justify-between gap-4">
@@ -743,8 +738,8 @@ export default function AutoEdicaoPage() {
             </div>
 
             {/* Bloco 3: Lista de Cenas / Legendas para edição */}
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
+            <div className="flex-1 min-h-0 flex flex-col gap-3">
+              <div className="flex items-center justify-between shrink-0">
                 <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider">Blocos de Legenda / Roteiro</span>
                 <button
                   onClick={handleAddScene}
@@ -755,7 +750,7 @@ export default function AutoEdicaoPage() {
                 </button>
               </div>
 
-              <div className="flex flex-col gap-3 max-h-[350px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-900 scrollbar-track-transparent">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-3 scrollbar-thin scrollbar-thumb-slate-900 scrollbar-track-transparent">
                 {subtitles.map((scene, idx) => (
                   <div 
                     key={scene.id} 
@@ -791,7 +786,7 @@ export default function AutoEdicaoPage() {
             </div>
 
             {/* Bloco 4: Chat do Consultor base */}
-            <div className="flex flex-col rounded-2xl border border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.12)] bg-[#060a13] p-4 transition-all duration-300 h-[280px] justify-between">
+            <div className="flex flex-col rounded-2xl border border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.12)] bg-[#060a13] p-4 h-[210px] shrink-0 justify-between font-sans">
               {/* Chat mensagens */}
               <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3 scrollbar-thin scrollbar-thumb-indigo-500/20 scrollbar-track-transparent">
                 {chatMessages.map(msg => (
@@ -845,13 +840,14 @@ export default function AutoEdicaoPage() {
           </div>
 
           {/* COLUNA DIREITA: CELULAR SIMULADO COMO PLAYER FIXO */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col gap-5 sticky top-[100px]">
-            <h2 className="text-xs uppercase font-extrabold tracking-wider text-slate-500">Visualização em Tempo Real</h2>
+          <div className="col-span-12 lg:col-span-4 flex flex-col gap-4 h-full min-h-0 justify-between items-center pb-2">
+            <h2 className="text-xs uppercase font-extrabold tracking-wider text-slate-500 w-full text-left shrink-0">Visualização em Tempo Real</h2>
 
-            <div 
-              ref={phoneContainerRef}
-              className="w-full bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.08)] rounded-[2.5rem] border-[8px] border-slate-950 overflow-hidden flex flex-col justify-end aspect-[9/16] relative"
-            >
+            <div className="flex-1 min-h-0 w-full flex items-center justify-center">
+              <div 
+                ref={phoneContainerRef}
+                className="h-full max-h-[460px] aspect-[9/16] bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.08)] rounded-[2.5rem] border-[8px] border-slate-950 overflow-hidden flex flex-col justify-end relative"
+              >
               {/* Dynamic Island / Notch */}
               <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-45 flex items-center justify-center pointer-events-none">
                 <div className="w-1.5 h-1.5 bg-slate-900 rounded-full mr-1"></div>
@@ -1015,6 +1011,7 @@ export default function AutoEdicaoPage() {
                 </div>
               )}
             </div>
+            </div>
 
             {/* Botão Salvar e Exportar */}
             {videoUrl && (
@@ -1026,7 +1023,7 @@ export default function AutoEdicaoPage() {
                   setSubtitles([]);
                   setBRollsActive(false);
                 }}
-                className="w-full bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 py-3.5 rounded-xl font-bold text-white transition-all active:scale-[0.99] text-xs shadow-lg shadow-indigo-500/10 flex items-center justify-center gap-1.5"
+                className="w-full max-w-[280px] bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 py-3 rounded-xl font-bold text-white transition-all active:scale-[0.99] text-xs shadow-lg shadow-indigo-500/10 flex items-center justify-center gap-1.5 shrink-0"
               >
                 <span>⚡ Renderizar Vídeo HD Final</span>
                 <span className="text-[10px] text-white/70 font-semibold normal-case">(Consome 1 crédito)</span>
