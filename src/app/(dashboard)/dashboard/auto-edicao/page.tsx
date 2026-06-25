@@ -590,7 +590,7 @@ export default function AutoEdicaoPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-125px)] flex flex-col gap-4 relative select-none overflow-hidden pb-1">
+    <div className="h-auto md:h-[calc(100vh-125px)] flex flex-col gap-4 relative select-none overflow-visible md:overflow-hidden pb-1">
       
       {/* Estilos dinâmicos de fonte no cabeçalho do documento */}
       <style>{`
@@ -598,7 +598,7 @@ export default function AutoEdicaoPage() {
       `}</style>
 
       {/* Rota Ativa/Título */}
-      <div className="flex items-center justify-between border-b border-[#15233c]/20 pb-4 select-none">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#15233c]/20 pb-4 select-none">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => {
@@ -626,7 +626,7 @@ export default function AutoEdicaoPage() {
             <p className="text-[11px] text-slate-500">Transforme vídeos brutos em conteúdos magnéticos com legendas, zoom e B-Rolls dinâmicos.</p>
           </div>
         </div>
-        <div className="text-xs text-slate-500 font-bold bg-[#070c17]/60 border border-[#15233c]/60 px-3.5 py-1.5 rounded-full select-none">
+        <div className="text-xs text-slate-500 font-bold bg-[#070c17]/60 border border-[#15233c]/60 px-3.5 py-1.5 rounded-full select-none shrink-0 self-start sm:self-auto">
           Saldo: <span className="text-blue-400">{credits} créditos</span>
         </div>
       </div>
