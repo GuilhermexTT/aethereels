@@ -501,6 +501,7 @@ export default function AutoEdicaoPage() {
       </div>
 
       {/* ESTADO 1: TELA DE UPLOAD (PORTA DE ENTRADA) */}
+      {/* ESTADO 1: TELA DE UPLOAD (PORTA DE ENTRADA) */}
       {step === 'upload' && (
         <div className="grid grid-cols-12 gap-8 items-stretch flex-1 min-h-0">
           {/* Esquerda: Upload Drag & Drop (Todo o container é a zona de drag and drop) */}
@@ -510,7 +511,7 @@ export default function AutoEdicaoPage() {
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
             onDrop={handleDrop}
-            className={`col-span-12 lg:col-span-8 flex flex-col justify-center items-center gap-6 bg-[#060a13]/30 border-2 border-dashed rounded-3xl p-10 h-full min-h-0 cursor-pointer transition-all duration-300 relative overflow-hidden group/upload-zone ${
+            className={`col-span-12 lg:col-span-8 flex flex-col justify-center items-center gap-6 bg-[#060a13]/30 border-2 border-dashed rounded-3xl p-8 max-h-[500px] h-full min-h-0 cursor-pointer transition-all duration-300 relative overflow-hidden self-center max-w-2xl mx-auto w-full group/upload-zone ${
               dragActive
                 ? 'border-purple-500 bg-purple-500/5 shadow-[0_0_30px_rgba(168,85,247,0.15)] scale-[1.005]'
                 : 'border-[#1e2d4a]/50 hover:border-cyan-500/50 hover:bg-[#060a13]/50 shadow-md shadow-blue-500/2'
@@ -520,8 +521,8 @@ export default function AutoEdicaoPage() {
             <div 
               className="absolute pointer-events-none z-0 opacity-40 blur-[80px] transition-all duration-500 group-hover/upload-zone:opacity-60"
               style={{
-                width: '320px',
-                height: '320px',
+                width: '280px',
+                height: '280px',
                 background: 'radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, rgba(59, 130, 246, 0.1) 50%, transparent 100%)',
                 left: '50%',
                 top: '50%',
@@ -537,31 +538,31 @@ export default function AutoEdicaoPage() {
               onChange={handleFileChange}
             />
 
-            <div className="z-10 text-center flex flex-col items-center gap-6 max-w-lg">
+            <div className="z-10 text-center flex flex-col items-center gap-5 max-w-md">
               {/* Ícone minimalista com background translúcido e glow */}
-              <div className="h-16 w-16 rounded-full bg-[#080d19]/80 border border-blue-500/30 flex items-center justify-center text-cyan-400 shadow-xl transition-all duration-300 group-hover/upload-zone:scale-110 group-hover/upload-zone:border-purple-500/50 group-hover/upload-zone:text-purple-400 relative">
+              <div className="h-14 w-14 rounded-full bg-[#080d19]/80 border border-blue-500/30 flex items-center justify-center text-cyan-400 shadow-xl transition-all duration-300 group-hover/upload-zone:scale-110 group-hover/upload-zone:border-purple-500/50 group-hover/upload-zone:text-purple-400 relative">
                 <div className="absolute inset-0 rounded-full bg-cyan-400/10 blur-[8px] group-hover/upload-zone:bg-purple-500/20" />
-                <Upload className="h-6 w-6 z-10" />
+                <Upload className="h-5 w-5 z-10" />
               </div>
 
-              <div className="flex flex-col gap-3">
-                <h2 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight uppercase">
+              <div className="flex flex-col gap-2">
+                <h2 className="text-xl lg:text-2xl font-extrabold text-white tracking-tight uppercase">
                   Importe seu Vídeo Bruto
                 </h2>
-                <p className="text-[11px] text-slate-400 max-w-sm mx-auto leading-normal">
+                <p className="text-[10px] text-slate-400 max-w-xs mx-auto leading-normal">
                   Arraste e solte o seu vídeo bruto falando (até 60s) aqui ou clique para selecionar. A IA fará todo o resto de forma automática.
                 </p>
               </div>
 
               {/* Badges explicativos minimalistas em fileira de suporte */}
-              <div className="flex gap-4 mt-2">
-                <span className="text-[9px] font-bold text-slate-500 bg-[#070c17]/60 border border-slate-900 px-3 py-1 rounded-full uppercase tracking-wider">
+              <div className="flex gap-3 mt-1">
+                <span className="text-[8px] font-bold text-slate-500 bg-[#070c17]/60 border border-slate-900 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                   ⚡ Auto-Legendas
                 </span>
-                <span className="text-[9px] font-bold text-slate-500 bg-[#070c17]/60 border border-slate-900 px-3 py-1 rounded-full uppercase tracking-wider">
-                  🔎 Inteligente Zoom
+                <span className="text-[8px] font-bold text-slate-500 bg-[#070c17]/60 border border-slate-900 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  🔎 Zoom
                 </span>
-                <span className="text-[9px] font-bold text-slate-500 bg-[#070c17]/60 border border-slate-900 px-3 py-1 rounded-full uppercase tracking-wider">
+                <span className="text-[8px] font-bold text-slate-500 bg-[#070c17]/60 border border-slate-900 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                   🎥 B-Rolls
                 </span>
               </div>
@@ -569,12 +570,12 @@ export default function AutoEdicaoPage() {
           </div>
 
           {/* Direita: Mockup Informativo e Descrições */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col items-center justify-center gap-6">
+          <div className="col-span-12 lg:col-span-4 flex flex-col items-center justify-center gap-4 self-center min-h-0">
             
             {/* iPhone Mockup */}
-            <div className="w-[280px] aspect-[9/16] rounded-[2.5rem] border-[8px] border-slate-950 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col justify-center items-center p-6 relative">
+            <div className="w-[210px] aspect-[9/16] rounded-[2rem] border-[6px] border-slate-950 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col justify-center items-center p-4 relative shrink-0">
               {/* Fake Status Bar */}
-              <div className="absolute top-2.5 inset-x-5 flex justify-between items-center text-[8px] font-bold text-slate-500/80 z-45 pointer-events-none select-none">
+              <div className="absolute top-2 inset-x-4 flex justify-between items-center text-[7px] font-bold text-slate-500/80 z-45 pointer-events-none select-none">
                 <span>23:25</span>
                 <div className="flex items-center gap-1">
                   <span>📶</span>
@@ -583,17 +584,17 @@ export default function AutoEdicaoPage() {
               </div>
 
               {/* Dynamic Island / Notch */}
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-black rounded-full z-45" />
+              <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-16 h-3.5 bg-black rounded-full z-45" />
 
               {/* Player Waiting Screen */}
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-[#0b1424] via-[#050b14] to-[#010408]">
                 {/* Abstrato Blur Glow de fundo */}
-                <div className="w-32 h-32 rounded-full bg-blue-500/5 blur-3xl absolute" />
+                <div className="w-24 h-24 rounded-full bg-blue-500/5 blur-2xl absolute" />
                 
                 {/* Legenda de impacto central */}
-                <div className="z-10 px-4 text-center">
+                <div className="z-10 px-3 text-center">
                   <h1 
-                    className="text-xs font-black tracking-widest uppercase mb-1 drop-shadow-md animate-pulse"
+                    className="text-[9px] font-black tracking-wider uppercase mb-1 drop-shadow-md animate-pulse"
                     style={{
                       fontFamily: 'Montserrat, sans-serif',
                       color: neonColor || '#FFD700',
@@ -602,46 +603,46 @@ export default function AutoEdicaoPage() {
                   >
                     [ AGUARDANDO VÍDEO... ]
                   </h1>
-                  <p className="text-[7.5px] font-bold text-slate-600 uppercase tracking-widest mt-1.5">
+                  <p className="text-[6.5px] font-bold text-slate-600 uppercase tracking-widest mt-1">
                     Envie um arquivo para iniciar a edição
                   </p>
                 </div>
 
                 {/* Simulated reels side icons in translucent outline for mockup vibe */}
-                <div className="absolute right-3.5 bottom-16 flex flex-col items-center gap-4 opacity-20">
-                  <div className="h-7 w-7 rounded-full border border-white flex items-center justify-center text-white" />
-                  <div className="h-7 w-7 rounded-full border border-white flex items-center justify-center text-white" />
-                  <div className="h-7 w-7 rounded-full border border-white flex items-center justify-center text-white" />
+                <div className="absolute right-2.5 bottom-12 flex flex-col items-center gap-3 opacity-20">
+                  <div className="h-5 w-5 rounded-full border border-white flex items-center justify-center text-white" />
+                  <div className="h-5 w-5 rounded-full border border-white flex items-center justify-center text-white" />
+                  <div className="h-5 w-5 rounded-full border border-white flex items-center justify-center text-white" />
                 </div>
               </div>
 
               {/* Bottom Home Indicator Pill */}
-              <div className="w-20 h-1 bg-white/20 rounded-full mx-auto mt-auto z-45" />
+              <div className="w-16 h-0.5 bg-white/20 rounded-full mx-auto mt-auto z-45" />
             </div>
 
             {/* Cards explicativos abaixo do celular */}
-            <div className="w-full max-w-[280px] flex flex-col gap-2.5">
-              <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-3 flex gap-2.5 items-start">
-                <span className="text-xs bg-cyan-500/10 text-cyan-400 p-1.5 rounded-lg">💬</span>
+            <div className="w-full max-w-[210px] flex flex-col gap-2 shrink-0">
+              <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-2 flex gap-2 items-start">
+                <span className="text-[10px] bg-cyan-500/10 text-cyan-400 p-1 rounded-lg">💬</span>
                 <div>
-                  <h4 className="text-[10px] font-bold text-slate-200">Legendas Automáticas</h4>
-                  <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Legenda palavra por palavra com cores neon dinâmicas e efeitos visuais.</p>
+                  <h4 className="text-[9px] font-bold text-slate-200">Legendas Automáticas</h4>
+                  <p className="text-[7.5px] text-slate-400 mt-0.5 leading-normal">Legenda palavra por palavra com cores neon dinâmicas e efeitos visuais.</p>
                 </div>
               </div>
 
-              <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-3 flex gap-2.5 items-start">
-                <span className="text-xs bg-purple-500/10 text-purple-400 p-1.5 rounded-lg">🔎</span>
+              <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-2 flex gap-2 items-start">
+                <span className="text-[10px] bg-purple-500/10 text-purple-400 p-1 rounded-lg">🔎</span>
                 <div>
-                  <h4 className="text-[10px] font-bold text-slate-200">Zoom Inteligente</h4>
-                  <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Cortes de câmera e enquadramentos dinâmicos nos momentos cruciais do áudio.</p>
+                  <h4 className="text-[9px] font-bold text-slate-200">Zoom Inteligente</h4>
+                  <p className="text-[7.5px] text-slate-400 mt-0.5 leading-normal">Cortes de câmera e enquadramentos dinâmicos nos momentos cruciais.</p>
                 </div>
               </div>
 
-              <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-3 flex gap-2.5 items-start">
-                <span className="text-xs bg-indigo-500/10 text-indigo-400 p-1.5 rounded-lg">⚡</span>
+              <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-2 flex gap-2 items-start">
+                <span className="text-[10px] bg-indigo-500/10 text-indigo-400 p-1 rounded-lg">⚡</span>
                 <div>
-                  <h4 className="text-[10px] font-bold text-slate-200">Inserção de B-Rolls</h4>
-                  <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Imagens cinemáticas e vídeos de apoio inseridos sobre suas falas importantes.</p>
+                  <h4 className="text-[9px] font-bold text-slate-200">Inserção de B-Rolls</h4>
+                  <p className="text-[7.5px] text-slate-400 mt-0.5 leading-normal">Imagens cinemáticas e vídeos de apoio inseridos sobre falas importantes.</p>
                 </div>
               </div>
             </div>
