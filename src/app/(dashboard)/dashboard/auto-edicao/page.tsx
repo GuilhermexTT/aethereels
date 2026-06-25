@@ -1184,7 +1184,7 @@ export default function AutoEdicaoPage() {
           </div>
 
           {/* COLUNA DIREITA: PREVIEW DO CELULAR */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col items-center gap-6 relative select-none">
+          <div className="col-span-12 lg:col-span-4 flex flex-col items-center gap-4 relative select-none">
             
             {/* Title area for mockup */}
             <div className="text-center flex flex-col gap-1 mt-1 shrink-0">
@@ -1206,7 +1206,7 @@ export default function AutoEdicaoPage() {
             {/* Sidebar wrapper that acts as the layout anchor and visual placeholder */}
             <div 
               ref={sidebarWrapperRef} 
-              className="relative w-full max-w-[290px] aspect-[9/16] flex items-center justify-center"
+              className="relative w-full max-w-[255px] aspect-[9/16] flex items-center justify-center"
             >
               {/* Visual dashed outline shown only when the phone has zoomed away */}
               {zoomState !== 'idle' && (
@@ -1442,53 +1442,53 @@ export default function AutoEdicaoPage() {
             </div>
 
             {/* Informações Extras de Vídeo abaixo do Celular */}
-            <div className="w-full max-w-[290px] bg-[#040812]/50 border border-slate-900 rounded-2xl p-3 px-3.5 flex justify-between items-center gap-1.5 select-none shrink-0 shadow-sm mt-1">
+            <div className="w-full max-w-[255px] bg-[#040812]/50 border border-slate-900 rounded-2xl p-2.5 px-3 flex justify-between items-center gap-1 select-none shrink-0 shadow-sm mt-0.5">
               {/* Formato */}
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 text-[10px] font-extrabold select-none">
+              <div className="flex items-center gap-1.5">
+                <div className="h-6 w-6 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 text-[9px] font-extrabold select-none">
                   9:16
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wide leading-none">Formato</span>
-                  <span className="text-[10px] text-slate-200 font-extrabold mt-0.5">Reels</span>
+                  <span className="text-[7.5px] text-slate-500 font-bold uppercase tracking-wide leading-none">Formato</span>
+                  <span className="text-[9px] text-slate-200 font-extrabold mt-0.5">Reels</span>
                 </div>
               </div>
 
               {/* Separador vertical */}
-              <div className="h-6 w-px bg-slate-900/60" />
+              <div className="h-5 w-px bg-slate-900/60" />
 
               {/* Duração */}
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
-                  <Clock className="h-3.5 w-3.5" />
+              <div className="flex items-center gap-1.5">
+                <div className="h-6 w-6 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                  <Clock className="h-3 w-3" />
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wide leading-none">Duração</span>
-                  <span className="text-[10px] text-slate-200 font-extrabold mt-0.5">{videoDuration ? `${Math.round(videoDuration)} segundos` : '15 segundos'}</span>
+                  <span className="text-[7.5px] text-slate-500 font-bold uppercase tracking-wide leading-none">Duração</span>
+                  <span className="text-[9px] text-slate-200 font-extrabold mt-0.5">{videoDuration ? `${Math.round(videoDuration)}s` : '15s'}</span>
                 </div>
               </div>
 
               {/* Separador vertical */}
-              <div className="h-6 w-px bg-slate-900/60" />
+              <div className="h-5 w-px bg-slate-900/60" />
 
               {/* Status */}
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
-                  <Video className="h-3.5 w-3.5" />
+              <div className="flex items-center gap-1.5">
+                <div className="h-6 w-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                  <Video className="h-3 w-3" />
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wide leading-none">Status</span>
-                  <span className="text-[10px] text-indigo-400 font-extrabold mt-0.5 whitespace-nowrap">Pronto</span>
+                  <span className="text-[7.5px] text-slate-500 font-bold uppercase tracking-wide leading-none">Status</span>
+                  <span className="text-[9px] text-indigo-400 font-extrabold mt-0.5 whitespace-nowrap">Pronto</span>
                 </div>
               </div>
             </div>
 
             {/* Botões de Ação do Player */}
             {videoUrl && !isZoomed && (
-              <div className="flex gap-3 w-full justify-center z-20 max-w-[290px] mt-0.5 select-none shrink-0">
+              <div className="flex gap-3.5 w-full justify-center z-20 max-w-[255px] mt-0.5 select-none shrink-0">
                 <button
                   onClick={handleZoomIn}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-3 text-xs font-bold bg-[#15233c]/25 border border-[#15233c]/45 text-slate-250 rounded-xl hover:bg-[#1e293b] hover:text-white transition-all cursor-pointer shadow-sm shadow-black/25 active:scale-95"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-[11px] font-bold bg-[#15233c]/25 border border-[#15233c]/45 text-slate-250 rounded-xl hover:bg-[#1e293b] hover:text-white transition-all cursor-pointer shadow-sm shadow-black/25 active:scale-95"
                 >
                   <Maximize2 className="h-3.5 w-3.5 text-slate-400" />
                   Aumentar
@@ -1501,7 +1501,7 @@ export default function AutoEdicaoPage() {
                     setSubtitles([]);
                     setBRollsActive(false);
                   }}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-3 text-xs font-extrabold bg-gradient-to-r from-[#2563eb] via-[#6366f1] to-[#a855f7] text-white rounded-xl hover:opacity-95 active:scale-95 transition-all cursor-pointer shadow-md shadow-indigo-500/10"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-[11px] font-extrabold bg-gradient-to-r from-[#2563eb] via-[#6366f1] to-[#a855f7] text-white rounded-xl hover:opacity-95 active:scale-95 transition-all cursor-pointer shadow-md shadow-indigo-500/10"
                 >
                   <span>⚡ Renderizar HD</span>
                 </button>
