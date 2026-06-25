@@ -511,7 +511,7 @@ export default function AutoEdicaoPage() {
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
             onDrop={handleDrop}
-            className={`col-span-12 lg:col-span-8 flex flex-col justify-center items-center gap-6 bg-[#060a13]/30 border-2 border-dashed rounded-3xl p-8 max-h-[500px] h-full min-h-0 cursor-pointer transition-all duration-300 relative overflow-hidden self-center max-w-2xl mx-auto w-full group/upload-zone ${
+            className={`col-span-12 lg:col-span-8 flex flex-col justify-center items-center gap-6 bg-[#060a13]/30 border-2 border-dashed rounded-3xl p-8 max-h-[550px] h-full min-h-0 cursor-pointer transition-all duration-300 relative overflow-hidden self-center max-w-2xl mx-auto w-full group/upload-zone ${
               dragActive
                 ? 'border-purple-500 bg-purple-500/5 shadow-[0_0_30px_rgba(168,85,247,0.15)] scale-[1.005]'
                 : 'border-[#1e2d4a]/50 hover:border-cyan-500/50 hover:bg-[#060a13]/50 shadow-md shadow-blue-500/2'
@@ -569,84 +569,90 @@ export default function AutoEdicaoPage() {
             </div>
           </div>
 
-          {/* Direita: Mockup Informativo e Descrições */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col items-center justify-center gap-4 self-center min-h-0">
-            
-            {/* iPhone Mockup */}
-            <div className="w-[210px] aspect-[9/16] rounded-[2rem] border-[6px] border-slate-950 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col justify-center items-center p-4 relative shrink-0">
-              {/* Fake Status Bar */}
-              <div className="absolute top-2 inset-x-4 flex justify-between items-center text-[7px] font-bold text-slate-500/80 z-45 pointer-events-none select-none">
-                <span>23:25</span>
-                <div className="flex items-center gap-1">
-                  <span>📶</span>
-                  <span>🔋</span>
+          {/* Direita: Mockup Informativo e Descrições (Dentro de Card Premium com Borda Azul) */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col h-full max-h-[550px] self-center min-h-0">
+            <div className="flex-1 min-h-0 w-full border border-blue-500/30 bg-[#060a13] shadow-[0_0_25px_rgba(59,130,246,0.06)] rounded-[2rem] p-5 flex flex-col items-center justify-between gap-3">
+              <h2 className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400 w-full text-left shrink-0">
+                Visualização em Tempo Real
+              </h2>
+
+              <div className="flex-1 min-h-0 w-full flex items-center justify-center">
+                {/* iPhone Mockup */}
+                <div className="w-[215px] aspect-[9/16] rounded-[2rem] border-[6px] border-slate-950 bg-[#050b14] overflow-hidden shadow-2xl ring-2 ring-slate-800/85 flex flex-col justify-end relative shrink-0 animate-fade-in">
+                  {/* Fake Status Bar */}
+                  <div className="absolute top-2.5 inset-x-4 flex justify-between items-center text-[7.5px] font-bold text-slate-500/80 z-45 pointer-events-none select-none">
+                    <span>23:25</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>📶</span>
+                      <span>🔋</span>
+                    </div>
+                  </div>
+
+                  {/* Dynamic Island / Notch */}
+                  <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-16 h-3 bg-black rounded-full z-45" />
+
+                  {/* Player Waiting Screen */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-[#0b1424] via-[#050b14] to-[#010408]">
+                    {/* Abstrato Blur Glow de fundo */}
+                    <div className="w-24 h-24 rounded-full bg-blue-500/5 blur-2xl absolute" />
+                    
+                    {/* Legenda de impacto central */}
+                    <div className="z-10 px-3 text-center">
+                      <h1 
+                        className="text-[9.5px] font-black tracking-wider uppercase mb-1 drop-shadow-md animate-pulse"
+                        style={{
+                          fontFamily: 'Montserrat, sans-serif',
+                          color: neonColor || '#FFD700',
+                          textShadow: '0 0 10px rgba(255,215,0,0.2)'
+                        }}
+                      >
+                        [ AGUARDANDO VÍDEO... ]
+                      </h1>
+                      <p className="text-[7px] font-bold text-slate-600 uppercase tracking-widest mt-1">
+                        Envie um arquivo para iniciar a edição
+                      </p>
+                    </div>
+
+                    {/* Simulated reels side icons in translucent outline for mockup vibe */}
+                    <div className="absolute right-2.5 bottom-12 flex flex-col items-center gap-3.5 opacity-20">
+                      <div className="h-5.5 w-5.5 rounded-full border border-white flex items-center justify-center text-white" />
+                      <div className="h-5.5 w-5.5 rounded-full border border-white flex items-center justify-center text-white" />
+                      <div className="h-5.5 w-5.5 rounded-full border border-white flex items-center justify-center text-white" />
+                    </div>
+                  </div>
+
+                  {/* Bottom Home Indicator Pill */}
+                  <div className="w-16 h-0.5 bg-white/20 rounded-full mx-auto mt-auto z-45" />
                 </div>
               </div>
 
-              {/* Dynamic Island / Notch */}
-              <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-16 h-3.5 bg-black rounded-full z-45" />
-
-              {/* Player Waiting Screen */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-[#0b1424] via-[#050b14] to-[#010408]">
-                {/* Abstrato Blur Glow de fundo */}
-                <div className="w-24 h-24 rounded-full bg-blue-500/5 blur-2xl absolute" />
-                
-                {/* Legenda de impacto central */}
-                <div className="z-10 px-3 text-center">
-                  <h1 
-                    className="text-[9px] font-black tracking-wider uppercase mb-1 drop-shadow-md animate-pulse"
-                    style={{
-                      fontFamily: 'Montserrat, sans-serif',
-                      color: neonColor || '#FFD700',
-                      textShadow: '0 0 10px rgba(255,215,0,0.2)'
-                    }}
-                  >
-                    [ AGUARDANDO VÍDEO... ]
-                  </h1>
-                  <p className="text-[6.5px] font-bold text-slate-600 uppercase tracking-widest mt-1">
-                    Envie um arquivo para iniciar a edição
-                  </p>
+              {/* Cards explicativos abaixo do celular */}
+              <div className="w-full max-w-[225px] flex flex-col gap-2.5 shrink-0">
+                <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-2.5 flex gap-2.5 items-start">
+                  <span className="text-xs bg-cyan-500/10 text-cyan-400 p-1.5 rounded-lg">💬</span>
+                  <div>
+                    <h4 className="text-[10px] font-bold text-slate-200">Legendas Automáticas</h4>
+                    <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Legenda palavra por palavra com cores neon dinâmicas e efeitos visuais.</p>
+                  </div>
                 </div>
 
-                {/* Simulated reels side icons in translucent outline for mockup vibe */}
-                <div className="absolute right-2.5 bottom-12 flex flex-col items-center gap-3 opacity-20">
-                  <div className="h-5 w-5 rounded-full border border-white flex items-center justify-center text-white" />
-                  <div className="h-5 w-5 rounded-full border border-white flex items-center justify-center text-white" />
-                  <div className="h-5 w-5 rounded-full border border-white flex items-center justify-center text-white" />
+                <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-2.5 flex gap-2.5 items-start">
+                  <span className="text-xs bg-purple-500/10 text-purple-400 p-1.5 rounded-lg">🔎</span>
+                  <div>
+                    <h4 className="text-[10px] font-bold text-slate-200">Zoom Inteligente</h4>
+                    <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Cortes de câmera e enquadramentos dinâmicos nos momentos cruciais.</p>
+                  </div>
+                </div>
+
+                <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-2.5 flex gap-2.5 items-start">
+                  <span className="text-xs bg-indigo-500/10 text-indigo-400 p-1.5 rounded-lg">⚡</span>
+                  <div>
+                    <h4 className="text-[10px] font-bold text-slate-200">Inserção de B-Rolls</h4>
+                    <p className="text-[8px] text-slate-400 mt-0.5 leading-normal">Imagens cinemáticas e vídeos de apoio inseridos sobre falas importantes.</p>
+                  </div>
                 </div>
               </div>
-
-              {/* Bottom Home Indicator Pill */}
-              <div className="w-16 h-0.5 bg-white/20 rounded-full mx-auto mt-auto z-45" />
             </div>
-
-            {/* Cards explicativos abaixo do celular */}
-            <div className="w-full max-w-[210px] flex flex-col gap-2 shrink-0">
-              <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-2 flex gap-2 items-start">
-                <span className="text-[10px] bg-cyan-500/10 text-cyan-400 p-1 rounded-lg">💬</span>
-                <div>
-                  <h4 className="text-[9px] font-bold text-slate-200">Legendas Automáticas</h4>
-                  <p className="text-[7.5px] text-slate-400 mt-0.5 leading-normal">Legenda palavra por palavra com cores neon dinâmicas e efeitos visuais.</p>
-                </div>
-              </div>
-
-              <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-2 flex gap-2 items-start">
-                <span className="text-[10px] bg-purple-500/10 text-purple-400 p-1 rounded-lg">🔎</span>
-                <div>
-                  <h4 className="text-[9px] font-bold text-slate-200">Zoom Inteligente</h4>
-                  <p className="text-[7.5px] text-slate-400 mt-0.5 leading-normal">Cortes de câmera e enquadramentos dinâmicos nos momentos cruciais.</p>
-                </div>
-              </div>
-
-              <div className="bg-[#060a13]/40 border border-blue-500/10 rounded-xl p-2 flex gap-2 items-start">
-                <span className="text-[10px] bg-indigo-500/10 text-indigo-400 p-1 rounded-lg">⚡</span>
-                <div>
-                  <h4 className="text-[9px] font-bold text-slate-200">Inserção de B-Rolls</h4>
-                  <p className="text-[7.5px] text-slate-400 mt-0.5 leading-normal">Imagens cinemáticas e vídeos de apoio inseridos sobre falas importantes.</p>
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
       )}
