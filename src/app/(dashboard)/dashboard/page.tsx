@@ -1106,7 +1106,7 @@ export default function CreationDashboard() {
               </button>
 
               {isLangOpen && (
-                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-slate-950 border border-[#16223f] rounded-xl overflow-hidden shadow-2xl z-50 py-1">
+                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-slate-950 border border-[#16223f] rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.6)] z-50 py-1">
                   {[
                     { value: 'pt', label: '🇧🇷 Português' },
                     { value: 'en', label: '🇺🇸 Inglês' },
@@ -1154,7 +1154,7 @@ export default function CreationDashboard() {
               </button>
 
               {isToneOpen && (
-                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-slate-950 border border-[#16223f] rounded-xl overflow-hidden shadow-2xl z-50 py-1">
+                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-slate-950 border border-[#16223f] rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.6)] z-50 py-1">
                   {[
                     { value: 'envolvente', label: 'Envolvente' },
                     { value: 'profissional', label: 'Profissional' },
@@ -1205,7 +1205,7 @@ export default function CreationDashboard() {
               </button>
 
               {isDurationOpen && (
-                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-slate-950 border border-[#16223f] rounded-xl overflow-hidden shadow-2xl z-50 py-1">
+                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-slate-950 border border-[#16223f] rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.6)] z-50 py-1">
                   {[
                     { value: '30s', label: '30 segundos' },
                     { value: '60s', label: '60 segundos' },
