@@ -1336,6 +1336,7 @@ export default function CreationDashboard() {
                           key={idx}
                           ref={(el) => { videoRefs.current[idx] = el; }}
                           src={videoSrc}
+                          poster="/preview.jpg"
                           preload="auto"
                           style={{
                             opacity: isActive ? 1 : 0,
@@ -1355,6 +1356,7 @@ export default function CreationDashboard() {
                     <video
                       ref={videoRef}
                       src={videoUrl || "https://assets.mixkit.co/videos/preview/mixkit-futuristic-subway-station-with-neon-lights-in-vertical-format-48227-large.mp4"}
+                      poster="/preview.jpg"
                       onTimeUpdate={handleTimeUpdate}
                       onLoadedMetadata={handleVideoLoadedMetadata}
                       onClick={togglePlay}

@@ -1273,6 +1273,7 @@ export default function AutoEdicaoPage() {
                           key={`broll-player-${idx}`}
                           ref={(el) => { bRollRefs.current[idx] = el; }}
                           src={url}
+                          poster="/preview.jpg"
                           preload="auto"
                           style={{
                             opacity: isActive ? 1 : 0,
@@ -1291,6 +1292,7 @@ export default function AutoEdicaoPage() {
                     <video
                       ref={videoRef}
                       src={videoUrl}
+                      poster="/preview.jpg"
                       onTimeUpdate={handleTimeUpdate}
                       onLoadedMetadata={handleLoadedMetadata}
                       onClick={togglePlay}
@@ -1434,8 +1436,20 @@ export default function AutoEdicaoPage() {
 
                   </div>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-slate-600 text-[10px] font-bold p-6 text-center leading-relaxed">
-                    Aguardando envio do vídeo para reproduzir...
+                  <div 
+                    className="h-full w-full relative flex items-center justify-center bg-cover bg-center select-none"
+                    style={{ backgroundImage: "url('/preview.jpg')" }}
+                  >
+                    {/* Blurred overlay */}
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-[6px] z-0" />
+                    
+                    {/* Centered text and icon */}
+                    <div className="text-slate-300 text-[10px] font-bold p-6 text-center leading-relaxed z-10 flex flex-col items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-slate-900/60 border border-slate-800 flex items-center justify-center text-slate-400">
+                        <Video className="h-4 w-4" />
+                      </div>
+                      <span>Aguardando envio do vídeo para reproduzir...</span>
+                    </div>
                   </div>
                 )}
               </div>
