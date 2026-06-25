@@ -18,7 +18,6 @@ import {
   Music,
   Type,
   Loader2,
-  CheckCircle2,
   Download,
   X,
   TrendingUp,
@@ -29,8 +28,7 @@ import {
   MicOff,
   Heart,
   MessageCircle,
-  Share2,
-  Upload
+  Share2
 } from 'lucide-react';
 import { useDashboard } from '../../../context/DashboardContext';
 import { TabType, LanguageType, ToneType, DurationType } from '../../../types/dashboard';
@@ -124,9 +122,6 @@ export default function CreationDashboard() {
   const sidebarWrapperRef = useRef<HTMLDivElement>(null);
   const modalPlaceholderRef = useRef<HTMLDivElement>(null);
 
-  const [dragActive, setDragActive] = useState(false);
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [generationMode, setGenerationMode] = useState<'prompt' | 'consultant'>('prompt');
   const [chatMessages, setChatMessages] = useState<Array<{ id: string; sender: 'consultant' | 'user'; text: string }>>([
@@ -331,30 +326,6 @@ export default function CreationDashboard() {
     }
   };
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setSelectedFileName(e.dataTransfer.files[0].name);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFileName(e.target.files[0].name);
-    }
-  };
 
   const handleTagClick = (tag: string) => {
     const prompts: Record<string, string> = {
@@ -941,92 +912,42 @@ export default function CreationDashboard() {
         {/* Container Principal do Formulário */}
         <div className="flex flex-col gap-4">
           {generationMode === 'prompt' ? (
-            <>
+            <div className="relative rounded-2xl border border-blue-500/80 shadow-[0_0_20px_rgba(59,130,246,0.12)] bg-[#060a13] p-3.5 transition-all duration-300">
               {/* Caixa de Texto do Prompt */}
-              <div className="relative rounded-2xl border border-blue-500/80 shadow-[0_0_20px_rgba(59,130,246,0.12)] bg-[#060a13] p-3.5 transition-all duration-300">
-                <textarea 
-                  value={prompt} 
-                  onChange={(e) => setPrompt(e.target.value)} 
-                  placeholder="Descreva sua ideia aqui..." 
-                  className="w-full min-h-[96px] bg-transparent text-slate-100 placeholder-slate-500 text-sm outline-none resize-none leading-relaxed" 
-                />
-                <div className="flex items-center justify-between border-t border-slate-900/40 pt-2.5 mt-1.5 select-none">
-                  <span className="text-[11px] text-slate-500 font-semibold">{prompt.length}/4000</span>
-                  <div className="flex items-center gap-2">
-                    {isSpeechSupported && (
-                      <button
-                        type="button"
-                        onClick={togglePromptListening}
-                        className={`h-8 w-8 flex items-center justify-center rounded-full transition-all duration-300 ${
-                          isPromptListening
-                            ? 'bg-red-500 animate-pulse text-white shadow-lg shadow-red-500/20'
-                            : 'bg-[#15233c] text-slate-400 hover:text-white hover:bg-slate-800'
-                        }`}
-                        title={isPromptListening ? "Parar gravação" : "Gravar áudio"}
-                      >
-                        {isPromptListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-                      </button>
-                    )}
-                    <button 
-                      onClick={handleGenerateVideo} 
-                      disabled={videoState === 'loading' || !prompt.trim()} 
-                      className="h-8 w-8 flex items-center justify-center rounded-full bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] text-white hover:opacity-95 active:scale-95 transition-all shadow-md shadow-indigo-600/10 disabled:opacity-30 disabled:cursor-not-allowed"
-                      title="Enviar Prompt"
+              <textarea 
+                value={prompt} 
+                onChange={(e) => setPrompt(e.target.value)} 
+                placeholder="Descreva sua ideia aqui..." 
+                className="w-full min-h-[96px] bg-transparent text-slate-100 placeholder-slate-500 text-sm outline-none resize-none leading-relaxed" 
+              />
+              <div className="flex items-center justify-between border-t border-slate-900/40 pt-2.5 mt-1.5 select-none">
+                <span className="text-[11px] text-slate-500 font-semibold">{prompt.length}/4000</span>
+                <div className="flex items-center gap-2">
+                  {isSpeechSupported && (
+                    <button
+                      type="button"
+                      onClick={togglePromptListening}
+                      className={`h-8 w-8 flex items-center justify-center rounded-full transition-all duration-300 ${
+                        isPromptListening
+                          ? 'bg-red-500 animate-pulse text-white shadow-lg shadow-red-500/20'
+                          : 'bg-[#15233c] text-slate-400 hover:text-white hover:bg-slate-800'
+                      }`}
+                      title={isPromptListening ? "Parar gravação" : "Gravar áudio"}
                     >
-                      <Send className="h-3.5 w-3.5 rotate-270 text-white" />
+                      {isPromptListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
                     </button>
-                  </div>
+                  )}
+                  <button 
+                    onClick={handleGenerateVideo} 
+                    disabled={videoState === 'loading' || !prompt.trim()} 
+                    className="h-8 w-8 flex items-center justify-center rounded-full bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] text-white hover:opacity-95 active:scale-95 transition-all shadow-md shadow-indigo-600/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Enviar Prompt"
+                  >
+                    <Send className="h-3.5 w-3.5 rotate-270 text-white" />
+                  </button>
                 </div>
               </div>
-
-              {/* Separador OU */}
-              <div className="flex items-center gap-4 py-0.5 select-none">
-                <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-slate-800/60 to-transparent" />
-                <span className="text-[10px] text-slate-500 font-extrabold tracking-widest uppercase">OU</span>
-                <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-slate-800/60 to-transparent" />
-              </div>
-
-              {/* Área de Drag & Drop para Upload de Arquivos */}
-              <div 
-                onClick={() => fileInputRef.current?.click()}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-2xl p-4.5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
-                  dragActive 
-                    ? 'border-blue-500/80 bg-blue-500/5 shadow-[0_0_20px_rgba(59,130,246,0.12)]' 
-                    : 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.06)] bg-[#060a13]/30 hover:bg-[#060a13]/55 hover:border-blue-500/80 hover:shadow-[0_0_20px_rgba(59,130,246,0.12)]'
-                }`}
-              >
-                <input 
-                  ref={fileInputRef}
-                  type="file" 
-                  className="hidden" 
-                  multiple 
-                  onChange={handleFileChange}
-                />
-                {selectedFileName ? (
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                      <CheckCircle2 className="h-4.5 w-4.5" />
-                    </div>
-                    <span className="text-xs font-semibold text-slate-200">Arquivo Selecionado</span>
-                    <span className="text-[11px] text-slate-400 max-w-[280px] truncate">{selectedFileName}</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="h-9 w-9 rounded-full bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
-                      <Upload className="h-4.5 w-4.5" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs font-semibold text-slate-300">Arraste e solte suas fotos ou vídeos aqui</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">ou clique para selecionar arquivos</p>
-                    </div>
-                  </>
-                )}
-              </div>
-            </>
+            </div>
           ) : (
             /* Interface do Consultor de Conteúdo */
             <div className="flex flex-col rounded-2xl border border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.12)] bg-[#060a13] p-4 transition-all duration-300 h-[380px] justify-between">

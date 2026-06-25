@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { 
   Sparkles, 
   Folder, 
-  Video, 
+  Video,
   Settings, 
   Crown, 
   Bell, 
@@ -23,8 +23,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
   const navigation = [
     { name: 'Criar', href: '/dashboard', icon: Sparkles },
+    { name: 'Auto-Edição', href: '/dashboard/auto-edicao', icon: Video },
     { name: 'Projetos', href: '/history', icon: Folder },
-    { name: 'Biblioteca', href: '#', icon: Video },
     { name: 'Configurações', href: '#', icon: Settings },
   ];
 
