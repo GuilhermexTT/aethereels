@@ -1,23 +1,80 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { TabType, VideoGenerationState } from '../types/dashboard';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface DashboardContextType {
   credits: number;
+  setCredits: React.Dispatch<React.SetStateAction<number>>;
   decrementCredits: (amount: number) => void;
   videoState: VideoGenerationState;
   setVideoState: (state: VideoGenerationState) => void;
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
+  refreshCredits: () => Promise<void>;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
 
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
-  const [credits, setCredits] = useState(12450);
+  const [credits, setCredits] = useState(0);
   const [videoState, setVideoState] = useState<VideoGenerationState>('idle');
   const [activeTab, setActiveTab] = useState<TabType>('text-to-video');
+
+  const refreshCredits = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('credits')
+          .eq('id', user.id)
+          .single();
+        
+        if (!error && profile) {
+          setCredits(profile.credits);
+        }
+      } else {
+        setCredits(0);
+      }
+    } catch (err) {
+      console.error('Erro ao recarregar créditos no context:', err);
+    }
+  };
+
+  useEffect(() => {
+    // Carregar créditos iniciais
+    refreshCredits();
+
+    // Ouvir mudanças no estado de autenticação para recarregar créditos
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        // Toda vez que o estado do usuário muda, atualiza o cookie também
+        document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax; Secure`;
+        
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('credits')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) {
+          setCredits(profile.credits);
+        }
+      } else {
+        document.cookie = `sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax; Secure`;
+        setCredits(0);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const decrementCredits = (amount: number) => {
     setCredits((prev) => Math.max(0, prev - amount));
@@ -27,11 +84,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     <DashboardContext.Provider
       value={{
         credits,
+        setCredits,
         decrementCredits,
         videoState,
         setVideoState,
         activeTab,
         setActiveTab,
+        refreshCredits,
       }}
     >
       {children}

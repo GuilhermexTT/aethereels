@@ -2,6 +2,22 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function proxy(request: NextRequest) {
+  const token = request.cookies.get('sb-access-token')?.value || request.cookies.get('supabase-auth-token')?.value;
+  const { pathname } = request.nextUrl;
+
+  // List of protected routes prefixes
+  // We only protect routes that require authentication from the start.
+  // /dashboard and /dashboard/auto-edicao are open (Value First strategy).
+  const isProtectedRoute =
+    pathname.startsWith('/history') ||
+    pathname.startsWith('/dashboard/projetos');
+
+  if (isProtectedRoute && !token) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
   const response = NextResponse.next();
 
   // Define Content-Security-Policy header

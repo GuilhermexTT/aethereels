@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import { useDashboard } from '../../../../context/DashboardContext';
 import { 
   Upload, 
   Play, 
@@ -23,6 +24,7 @@ import {
   Shield,
   Zap,
   Lock,
+  Mail,
   Folder,
   Search,
   Clapperboard,
@@ -51,6 +53,7 @@ interface SubtitleItem {
 export default function AutoEdicaoPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const { credits, refreshCredits } = useDashboard();
 
   // Estados de Configuração da Tela
   const [step, setStep] = useState<'upload' | 'processing' | 'editor'>('upload');
@@ -59,8 +62,9 @@ export default function AutoEdicaoPage() {
   const [uploading, setUploading] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [credits, setCredits] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Estados de Processamento
   const [processingStage, setProcessingStage] = useState(0);
@@ -117,27 +121,53 @@ export default function AutoEdicaoPage() {
   useEffect(() => {
     setMounted(true);
     
-    // Buscar créditos do usuário logado
-    async function loadUserCredits() {
+    async function initAuth() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           setUserId(user.id);
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('credits')
-            .eq('id', user.id)
-            .single();
-          if (profile) {
-            setCredits(profile.credits);
-          }
         }
       } catch (err) {
-        console.error('Erro ao carregar créditos:', err);
+        console.error('Erro ao buscar usuário:', err);
       }
     }
-    loadUserCredits();
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setUserId(session.user.id);
+      } else {
+        setUserId(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
+
+  // Recuperar rascunho temporário do LocalStorage para usuários deslogados
+  useEffect(() => {
+    if (mounted && !userId) {
+      const tempStr = localStorage.getItem('aether_temp_project');
+      if (tempStr) {
+        try {
+          const tempProject = JSON.parse(tempStr);
+          setSelectedFileName(tempProject.name);
+          setVideoUrl(tempProject.video_s3_key);
+          setSubtitles(tempProject.transcript_data || []);
+          if (tempProject.styles) {
+            setNeonColor(tempProject.styles.neonColor || '#FFD700');
+            setTextSize(tempProject.styles.textSize || 'medium');
+            setFontFamily(tempProject.styles.fontFamily || 'Montserrat');
+          }
+          setStep('editor');
+        } catch (e) {
+          console.error('Erro ao recuperar projeto temporário do LocalStorage:', e);
+        }
+      }
+    }
+  }, [userId, mounted]);
 
   // Relógio do Celular
   useEffect(() => {
@@ -396,7 +426,7 @@ export default function AutoEdicaoPage() {
       setUploading(false);
       
       // Iniciar a simulação de transcrição baseada em IA
-      triggerAISimulation(file.name);
+      triggerAISimulation(file.name, fileUrl);
 
     } catch (err: any) {
       console.error(err);
@@ -406,7 +436,7 @@ export default function AutoEdicaoPage() {
   };
 
   // Simulação de processamento de IA
-  const triggerAISimulation = (fileName: string) => {
+  const triggerAISimulation = (fileName: string, fileUrl: string) => {
     setProcessingStage(1);
     setProcessingLog('Lendo frequência de voz e isolando canais de áudio...');
 
@@ -432,10 +462,202 @@ export default function AutoEdicaoPage() {
             ];
             setSubtitles(initialSubs);
             setStep('editor');
+            
+            // Criar projeto na nuvem (Supabase) ou localmente (LocalStorage)
+            handleCreateProject(initialSubs, fileUrl, fileName);
           }, 1500);
         }, 1500);
       }, 1500);
     }, 1500);
+  };
+
+  // Criação inicial do projeto
+  const handleCreateProject = async (initialSubs: SubtitleItem[], s3Key: string, name: string) => {
+    const initialStyles = {
+      neonColor: '#FFD700',
+      textSize: 'medium',
+      fontFamily: 'Montserrat'
+    };
+
+    if (userId) {
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .insert({
+            user_id: userId,
+            name: name,
+            video_s3_key: s3Key,
+            transcript_data: initialSubs,
+            styles: initialStyles
+          })
+          .select()
+          .single();
+
+        if (!error && data) {
+          setProjectId(data.id);
+        }
+      } catch (err) {
+        console.error('Erro ao criar projeto no Supabase:', err);
+      }
+    } else {
+      const tempProject = {
+        name: name,
+        video_s3_key: s3Key,
+        transcript_data: initialSubs,
+        styles: initialStyles
+      };
+      localStorage.setItem('aether_temp_project', JSON.stringify(tempProject));
+    }
+  };
+
+  // Auto-salvamento debounced (1 segundo)
+  useEffect(() => {
+    if (!mounted) return;
+
+    const delayDebounceFn = setTimeout(async () => {
+      const projectStyles = { neonColor, textSize, fontFamily };
+
+      if (userId && projectId) {
+        try {
+          await supabase
+            .from('projects')
+            .update({
+              transcript_data: subtitles,
+              styles: projectStyles
+            })
+            .eq('id', projectId);
+        } catch (err) {
+          console.error('Erro no auto-salvamento do Supabase:', err);
+        }
+      } else if (!userId) {
+        const tempStr = localStorage.getItem('aether_temp_project');
+        if (tempStr) {
+          try {
+            const tempProject = JSON.parse(tempStr);
+            tempProject.transcript_data = subtitles;
+            tempProject.styles = projectStyles;
+            localStorage.setItem('aether_temp_project', JSON.stringify(tempProject));
+          } catch (e) {
+            console.error('Erro no auto-salvamento do LocalStorage:', e);
+          }
+        }
+      }
+    }, 1000);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [subtitles, neonColor, textSize, fontFamily, projectId, userId, mounted]);
+
+  // Estados do Modal de Autenticação Inline
+  const [authTab, setAuthTab] = useState<'register' | 'login'>('register');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const handleRenderAction = () => {
+    if (!userId) {
+      setAuthError(null);
+      setAuthEmail('');
+      setAuthPassword('');
+      setAuthTab('register');
+      setShowAuthModal(true);
+    } else {
+      alert('Seu vídeo editado foi enviado para renderização final! Você receberá uma notificação em instantes.');
+      setStep('upload');
+      setVideoUrl(null);
+      setSubtitles([]);
+      setBRollsActive(false);
+      setProjectId(null);
+      setIsZoomed(false);
+      setZoomState('idle');
+    }
+  };
+
+  const handleInlineAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authEmail || !authPassword) return;
+
+    setAuthLoading(true);
+    setAuthError(null);
+
+    try {
+      if (authTab === 'register') {
+        const { data, error } = await supabase.auth.signUp({
+          email: authEmail,
+          password: authPassword,
+        });
+        if (error) throw error;
+        if (data.session) {
+          document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax; Secure`;
+          await handleAuthSuccess(data.session);
+        } else {
+          alert('Cadastro realizado com sucesso! Verifique seu e-mail para confirmar a conta.');
+          setShowAuthModal(false);
+        }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: authEmail,
+          password: authPassword,
+        });
+        if (error) throw error;
+        if (data.session) {
+          document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax; Secure`;
+          await handleAuthSuccess(data.session);
+        }
+      }
+    } catch (err: any) {
+      console.error(err);
+      setAuthError(err.message || 'Erro ao autenticar. Tente novamente.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleAuthSuccess = async (session: any) => {
+    const authedUser = session.user;
+    setUserId(authedUser.id);
+    
+    // Recarregar créditos no context global
+    await refreshCredits();
+
+    // Sincronizar projeto temporário do LocalStorage para o Supabase
+    const tempStr = localStorage.getItem('aether_temp_project');
+    if (tempStr) {
+      try {
+        const tempProject = JSON.parse(tempStr);
+        const { data, error } = await supabase
+          .from('projects')
+          .insert({
+            user_id: authedUser.id,
+            name: tempProject.name,
+            video_s3_key: tempProject.video_s3_key,
+            transcript_data: tempProject.transcript_data,
+            styles: tempProject.styles
+          })
+          .select()
+          .single();
+
+        if (!error && data) {
+          setProjectId(data.id);
+          localStorage.removeItem('aether_temp_project');
+        }
+      } catch (err) {
+        console.error('Erro ao transferir projeto do LocalStorage para o Supabase:', err);
+      }
+    }
+    
+    setShowAuthModal(false);
+    
+    // Sucesso, dispara renderização
+    alert('Autenticado com sucesso! Seu projeto foi salvo e enviado para renderização HD.');
+    
+    setStep('upload');
+    setVideoUrl(null);
+    setSubtitles([]);
+    setBRollsActive(false);
+    setProjectId(null);
+    setIsZoomed(false);
+    setZoomState('idle');
   };
 
   // Customização de texto da legenda
@@ -1508,13 +1730,7 @@ export default function AutoEdicaoPage() {
                   Aumentar
                 </button>
                 <button
-                  onClick={() => {
-                    alert('Seu vídeo editado foi enviado para renderização final! Você receberá uma notificação em instantes.');
-                    setStep('upload');
-                    setVideoUrl(null);
-                    setSubtitles([]);
-                    setBRollsActive(false);
-                  }}
+                  onClick={handleRenderAction}
                   className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-[11px] font-extrabold bg-gradient-to-r from-[#2563eb] via-[#6366f1] to-[#a855f7] text-white rounded-xl hover:opacity-95 active:scale-95 transition-all cursor-pointer shadow-md shadow-indigo-500/10"
                 >
                   <span>⚡ Renderizar HD</span>
@@ -1562,15 +1778,7 @@ export default function AutoEdicaoPage() {
                   {videoUrl && (
                     <div className="flex gap-3 w-full justify-center mb-4 max-w-[370px]">
                       <button
-                        onClick={() => {
-                          alert('Seu vídeo editado foi enviado para renderização final! Você receberá uma notificação em instantes.');
-                          setStep('upload');
-                          setVideoUrl(null);
-                          setSubtitles([]);
-                          setBRollsActive(false);
-                          setIsZoomed(false);
-                          setZoomState('idle');
-                        }}
+                        onClick={handleRenderAction}
                         className="flex-1 flex items-center justify-center gap-1.5 px-4 py-3 text-xs font-semibold bg-[#0c1426] border border-[#15233c]/60 hover:bg-[#15233c] text-white rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm"
                       >
                         <span>⚡ Renderizar HD</span>
@@ -1594,6 +1802,121 @@ export default function AutoEdicaoPage() {
             )}
           </div>
 
+        </div>
+      )}
+
+      {/* Modal Premium de Autenticação Inline (Cadastro/Login) */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-55 flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-[#02050c]/90 backdrop-blur-md transition-opacity duration-300"
+            onClick={() => setShowAuthModal(false)}
+          />
+          <div className="bg-[#060a13] border border-blue-500/50 shadow-[0_0_50px_rgba(59,130,246,0.15)] rounded-3xl p-6 md:p-8 max-w-[420px] w-full relative z-50 text-slate-100 flex flex-col font-sans select-none animate-card-in">
+            <button 
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-4 right-4 p-2 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white rounded-full transition-all cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="text-center mb-6 mt-2">
+              <span className="text-[9px] font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-3 py-1 rounded-full uppercase tracking-wider mb-2.5 inline-block">
+                Value First 🚀
+              </span>
+              <h3 className="text-lg font-black text-white tracking-tight uppercase">
+                {authTab === 'register' ? 'Criar Conta Gratuita' : 'Entrar na sua Conta'}
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-2 font-semibold leading-relaxed px-2">
+                Crie sua conta gratuita para salvar seu projeto e resgatar seus 10 créditos para baixar este vídeo.
+              </p>
+            </div>
+
+            {authError && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl p-3 text-[10px] font-semibold mb-4 text-center">
+                ⚠️ {authError}
+              </div>
+            )}
+
+            <div className="flex bg-slate-950 border border-[#16223f]/50 rounded-xl p-1 mb-5">
+              <button
+                type="button"
+                onClick={() => setAuthTab('register')}
+                className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                  authTab === 'register' 
+                    ? 'bg-[#161328] border border-[#7c3aed]/40 text-white' 
+                    : 'text-slate-500 hover:text-slate-350'
+                }`}
+              >
+                Cadastrar-se
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthTab('login')}
+                className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                  authTab === 'login' 
+                    ? 'bg-[#161328] border border-[#7c3aed]/40 text-white' 
+                    : 'text-slate-500 hover:text-slate-350'
+                }`}
+              >
+                Já tenho conta
+              </button>
+            </div>
+
+            <form onSubmit={handleInlineAuthSubmit} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">E-mail</label>
+                <div className="relative flex items-center">
+                  <Mail className="absolute left-3 h-4 w-4 text-slate-500" />
+                  <input
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="exemplo@email.com"
+                    className="w-full bg-[#03060c]/60 border border-[#16223f]/60 hover:border-cyan-500/30 focus:border-cyan-400 focus:shadow-[0_0_12px_rgba(6,182,212,0.06)] rounded-xl py-3 pl-9 pr-3 text-xs outline-none transition-all text-white placeholder-slate-600"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Senha</label>
+                <div className="relative flex items-center">
+                  <Lock className="absolute left-3 h-4 w-4 text-slate-500" />
+                  <input
+                    type="password"
+                    required
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full bg-[#03060c]/60 border border-[#16223f]/60 hover:border-cyan-500/30 focus:border-cyan-400 focus:shadow-[0_0_12px_rgba(6,182,212,0.06)] rounded-xl py-3 pl-9 pr-3 text-xs outline-none transition-all text-white placeholder-slate-600"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 py-3.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/10 active:scale-98 transition-all disabled:opacity-50 mt-2 cursor-pointer"
+              >
+                {authLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    <span>Processando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 text-white fill-current" />
+                    <span>{authTab === 'register' ? 'Criar Conta & Liberar Render HD' : 'Entrar & Liberar Render HD'}</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="mt-5 text-center text-[10px] text-slate-500 font-semibold">
+              Ao continuar, você concorda com nossos termos.
+            </div>
+          </div>
         </div>
       )}
 
