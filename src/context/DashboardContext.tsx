@@ -31,19 +31,17 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const refreshCredits = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('credits')
-          .eq('id', user.id)
-          .single();
-        
-        if (!error && profile) {
-          setCredits(profile.credits);
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      const response = await fetch('/api/profile/credits', {
+        headers: {
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
         }
-      } else {
-        setCredits(0);
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCredits(data.credits);
       }
     } catch (err) {
       console.error('Erro ao recarregar créditos no context:', err);
@@ -60,18 +58,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         // Toda vez que o estado do usuário muda, atualiza o cookie também
         document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax; Secure`;
-        
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('credits')
-          .eq('id', session.user.id)
-          .single();
-        if (profile) {
-          setCredits(profile.credits);
-        }
+        await refreshCredits();
       } else {
         document.cookie = `sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax; Secure`;
-        setCredits(0);
+        await refreshCredits();
       }
     });
 
