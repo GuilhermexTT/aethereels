@@ -17,6 +17,8 @@ interface DashboardContextType {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
   refreshCredits: () => Promise<void>;
+  isUpgradeModalOpen: boolean;
+  setIsUpgradeModalOpen: (open: boolean) => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -25,6 +27,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [credits, setCredits] = useState(0);
   const [videoState, setVideoState] = useState<VideoGenerationState>('idle');
   const [activeTab, setActiveTab] = useState<TabType>('text-to-video');
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   const refreshCredits = async () => {
     try {
@@ -49,6 +52,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Carregar créditos iniciais
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshCredits();
 
     // Ouvir mudanças no estado de autenticação para recarregar créditos
@@ -91,6 +95,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         activeTab,
         setActiveTab,
         refreshCredits,
+        isUpgradeModalOpen,
+        setIsUpgradeModalOpen,
       }}
     >
       {children}

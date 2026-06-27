@@ -44,13 +44,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (status === 'failed') {
-      const finalUserId = user_id || jobData.user_id;
-      await supabaseAdmin.rpc('refund_video_credit', {
-        p_user_id: finalUserId,
-        p_job_id: job_id,
-        p_error_txt: error_message || 'Falha genérica no processamento da automação.'
-      });
-      return NextResponse.json({ message: 'Job atualizado para failed e créditos estornados.', job_id, status: 'failed' });
+      await supabaseAdmin
+        .from('video_jobs')
+        .update({ status: 'failed' })
+        .eq('id', job_id);
+      return NextResponse.json({ message: 'Job atualizado para failed.', job_id, status: 'failed' });
     }
 
     const updateData: any = { status };

@@ -38,6 +38,7 @@ import {
   Copy
 } from 'lucide-react';
 import { SubtitleItem } from '@/video/types';
+import { useDashboard } from '@/context/DashboardContext';
 
 // Supabase client instance using standard client persistence
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -112,6 +113,7 @@ interface EditorClientProps {
 export default function EditorClient({ id }: EditorClientProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const { setIsUpgradeModalOpen } = useDashboard();
 
   useEffect(() => {
     setMounted(true);
@@ -651,6 +653,12 @@ export default function EditorClient({ id }: EditorClientProps) {
       return false;
     }
 
+    if (res.status === 403) {
+      setIsUpgradeModalOpen(true);
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Saldo de créditos insuficiente. Você precisa de pelo menos 10 créditos para renderizar.');
+    }
+
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       throw new Error(errorData.error || 'O servidor de renderização falhou ao iniciar.');
@@ -660,12 +668,6 @@ export default function EditorClient({ id }: EditorClientProps) {
     const renderData = await res.json();
     
     const { renderId, bucketName } = renderData;
-
-    // 2. Decrementar 1 crédito do usuário via RPC atômica
-    if (userId) {
-      await supabase.rpc('decrement_profile_credits', { p_user_id: userId, p_amount: 1 });
-      setCredits(prev => Math.max(0, prev - 1));
-    }
 
     // 3. Atualizar status na tabela correspondente
     await supabase
@@ -731,8 +733,8 @@ export default function EditorClient({ id }: EditorClientProps) {
 
   // Disparar Renderização Final na AWS Lambda
   const handleRenderVideo = async () => {
-    if (credits <= 0) {
-      alert('Você não tem créditos suficientes na sua conta.');
+    if (credits < 10) {
+      setIsUpgradeModalOpen(true);
       return;
     }
 

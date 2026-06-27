@@ -16,6 +16,7 @@ import {
   X 
 } from 'lucide-react';
 import { DashboardProvider, useDashboard } from '../../context/DashboardContext';
+import UpgradeModal from '@/components/UpgradeModal';
 
 interface SidebarContentProps {
   onClose?: () => void;
@@ -107,7 +108,7 @@ function SidebarContent({
 }
 
 function TopHeader({ onMenuOpen }: { onMenuOpen: () => void }) {
-  const { credits } = useDashboard();
+  const { credits, setIsUpgradeModalOpen } = useDashboard();
 
   return (
     <header className="sticky top-0 z-40 w-full bg-[#02050c]/80 backdrop-blur-md px-4 py-3 md:px-6 md:py-4 flex items-center justify-between border-b border-[#15233c]/20">
@@ -130,7 +131,10 @@ function TopHeader({ onMenuOpen }: { onMenuOpen: () => void }) {
         </div>
 
         {/* Upgrade Button */}
-        <button className="flex items-center gap-1 sm:gap-1.5 rounded-xl bg-gradient-to-r from-[#6366f1] to-[#a855f7] hover:opacity-95 px-3 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-xs font-bold text-white shadow-lg shadow-purple-500/20 active:scale-95 transition-all">
+        <button 
+          onClick={() => setIsUpgradeModalOpen(true)}
+          className="flex items-center gap-1 sm:gap-1.5 rounded-xl bg-gradient-to-r from-[#6366f1] to-[#a855f7] hover:opacity-95 px-3 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-xs font-bold text-white shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
+        >
           <Crown className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-current text-white" />
           Upgrade
         </button>
@@ -202,6 +206,7 @@ export default function DashboardClientLayout({
           </main>
         </div>
       </div>
+      <UpgradeModal />
     </DashboardProvider>
   );
 }

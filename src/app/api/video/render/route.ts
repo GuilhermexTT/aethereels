@@ -1,6 +1,6 @@
 import { NextResponse, after } from 'next/server';
 import { renderMediaOnLambda } from '@remotion/lambda-client';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin, getSupabaseUserClientFromRequest, getSupabaseUserTokenFromRequest } from '@/lib/supabase';
 
 // Mapear credenciais customizadas do .env.local para as esperadas internamente pelo AWS SDK do Remotion
 if (process.env.REMOTION_AWS_ACCESS_KEY_ID) {
@@ -24,6 +24,76 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'As propriedades de entrada (inputProps) são obrigatórias.' },
         { status: 400 }
+      );
+    }
+
+    // 1. Obter o cliente Supabase associado ao usuário (respeita RLS)
+    const supabaseUser = await getSupabaseUserClientFromRequest();
+    const token = await getSupabaseUserTokenFromRequest();
+
+    // 2. Obter dados do usuário autenticado a partir da sessão
+    let user: any = null;
+    let authError: any = null;
+    try {
+      const { data: { user: supabaseAuthUser }, error: err } = await supabaseUser.auth.getUser(token);
+      user = supabaseAuthUser;
+      authError = err;
+    } catch (err) {
+      console.log('Nenhuma sessão ativa encontrada via cookies/auth headers.');
+    }
+
+    if (authError || !user) {
+      // Em modo de desenvolvimento, se não houver usuário logado, usamos o usuário padrão de testes
+      if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
+        console.log('🔧 [DEV MODE] Nenhuma sessão ativa detectada. Criando/usando usuário padrão de testes...');
+        
+        // Verificar se existe algum usuário cadastrado na tabela de perfis
+        const { data: existingProfiles } = await supabaseAdmin
+          .from('profiles')
+          .select('id, email')
+          .limit(1);
+
+        if (existingProfiles && existingProfiles.length > 0) {
+          user = { id: existingProfiles[0].id, email: existingProfiles[0].email };
+          console.log(`🔧 [DEV MODE] Usando usuário de testes existente em profiles: ${user.email} (${user.id})`);
+        } else {
+          return NextResponse.json(
+            { error: 'Não autorizado. Faça login para renderizar vídeos.' },
+            { status: 401 }
+          );
+        }
+      } else {
+        return NextResponse.json(
+          { error: 'Não autorizado. Faça login para renderizar vídeos.' },
+          { status: 401 }
+        );
+      }
+    }
+
+    // 3. Garantir que o perfil do usuário existe na tabela public.profiles e obter saldo
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, credits')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('Erro ao buscar perfil do usuário em public.profiles:', profileError);
+    }
+
+    if (!profile) {
+      return NextResponse.json(
+        { error: 'Perfil do usuário não encontrado. Faça login novamente.' },
+        { status: 404 }
+      );
+    }
+
+    // 4. Trava de Segurança Server-Side: Verificar se o saldo de créditos é maior ou igual a 10
+    if (profile.credits < 10) {
+      console.warn(`[TRAVA DE SEGURANÇA] Usuário ${user.email} (${user.id}) tentou renderizar vídeo com saldo insuficiente (Saldo atual: ${profile.credits}).`);
+      return NextResponse.json(
+        { error: 'Saldo de créditos insuficiente. Você precisa de pelo menos 10 créditos para renderizar um vídeo.' },
+        { status: 403 }
       );
     }
 

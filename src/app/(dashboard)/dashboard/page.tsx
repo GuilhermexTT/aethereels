@@ -92,7 +92,7 @@ const parseConsultantResponse = (rawText: string) => {
 };
 
 export default function CreationDashboard() {
-  const { credits, decrementCredits, videoState, setVideoState, activeTab, setActiveTab } = useDashboard();
+  const { credits, decrementCredits, videoState, setVideoState, activeTab, setActiveTab, setIsUpgradeModalOpen } = useDashboard();
 
   const [prompt, setPrompt] = useState('');
   const [blogUrl, setBlogUrl] = useState('');
@@ -696,6 +696,12 @@ export default function CreationDashboard() {
         }),
       });
 
+      if (response.status === 403) {
+        setIsUpgradeModalOpen(true);
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Saldo de créditos insuficiente para renderizar.');
+      }
+
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || 'Falha ao solicitar renderização do vídeo.');
@@ -822,7 +828,6 @@ export default function CreationDashboard() {
       const jobId = data.job_id;
       setCurrentJobId(jobId);
 
-      decrementCredits(1);
       setLoadingProgress(25);
       setLoadingLog('Processando roteiro e mídias...');
 

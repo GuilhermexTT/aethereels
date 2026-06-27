@@ -150,14 +150,7 @@ export async function POST(request: NextRequest) {
       profile = newProfile;
     }
 
-    // 5. Trava de Segurança Server-Side: Verificar se o saldo de créditos é maior que 0
-    if (profile.credits <= 0) {
-      console.warn(`[TRAVA DE SEGURANÇA] Usuário ${user.email} (${user.id}) tentou gerar vídeo com saldo zerado (Saldo atual: ${profile.credits}).`);
-      return NextResponse.json(
-        { error: 'Saldo de créditos insuficiente. Faça um upgrade ou aguarde a recarga.' },
-        { status: 403 }
-      );
-    }
+    // 5. O rascunho de roteiro/interações custam 0 créditos, portanto nenhuma trava de saldo é aplicada aqui.
 
     // 6. Criar o registro na tabela de video_jobs com status 'pending' para obter o job_id
     const { data: newJob, error: jobError } = await supabaseAdmin
@@ -255,18 +248,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 8. Fluxo de Disparo com Sucesso -> Decrementar exatamente 1 crédito via RPC atômica
-    const { error: decrementError } = await supabaseAdmin.rpc('decrement_profile_credits', {
-      p_user_id: user.id,
-      p_amount: 1
-    });
-
-    if (decrementError) {
-      console.error(`Erro ao debitar crédito do usuário ${user.id} para o job ${jobId}:`, decrementError);
-      // Mantemos o job em andamento, mas logamos o erro administrativo de créditos
-    } else {
-      console.log(`[DÉBITO BEM-SUCEDIDO] 1 crédito debitado do usuário ${user.id} pelo job ${jobId}.`);
-    }
+    // 8. Fluxo de Disparo com Sucesso -> Rascunho custa 0 créditos, decremento não é aplicado na criação do job.
+    console.log(`[GERAÇÃO DE RASCUNHO] Job ${jobId} criado com custo de 0 créditos para o usuário ${user.id}.`);
 
     // 9. Retornar sucesso contendo o id do job criado
     return NextResponse.json({

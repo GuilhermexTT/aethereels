@@ -64,6 +64,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Verificar se o usuário possui saldo suficiente (mínimo 10 créditos para renderizar)
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('credits')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      return NextResponse.json(
+        { error: 'Erro ao buscar perfil de créditos do usuário.' },
+        { status: 500 }
+      );
+    }
+
+    if (profile.credits < 10) {
+      console.warn(`[TRAVA DE SEGURANÇA] Usuário ${user.email} (${user.id}) tentou iniciar download/renderização com saldo insuficiente (Saldo atual: ${profile.credits}).`);
+      return NextResponse.json(
+        { error: 'Saldo de créditos insuficiente. Você precisa de pelo menos 10 créditos para renderizar um vídeo.' },
+        { status: 403 }
+      );
+    }
+
     // 4. Buscar o job na tabela public.video_jobs do Supabase
     // Para respeitar as políticas de RLS, usamos o supabaseUser.
     // Se for um usuário padrão de desenvolvimento sem sessão ativa, usamos supabaseAdmin.
@@ -141,15 +163,14 @@ export async function POST(request: NextRequest) {
     if (!remotionEngineUrl) {
       console.error('ERRO: REMOTION_ENGINE_URL não configurado.');
       
-      // Reembolsa créditos se falhar
-      await supabaseAdmin.rpc('refund_video_credit', {
-        p_user_id: user.id,
-        p_job_id: job_id,
-        p_error_txt: 'REMOTION_ENGINE_URL não configurado no servidor Next.js.'
-      });
+      // Marcar o status do job como failed
+      await supabaseAdmin
+        .from('video_jobs')
+        .update({ status: 'failed' })
+        .eq('id', job_id);
 
       return NextResponse.json(
-        { error: 'Configuração do motor de renderização ausente no servidor. Seu crédito foi estornado.' },
+        { error: 'Configuração do motor de renderização ausente no servidor. Nenhum crédito foi cobrado.' },
         { status: 500 }
       );
     }
@@ -190,15 +211,14 @@ export async function POST(request: NextRequest) {
     } catch (renderError: any) {
       console.error('Erro ao chamar motor Remotion:', renderError);
 
-      // Reverter status para failed e reembolsar créditos via RPC
-      await supabaseAdmin.rpc('refund_video_credit', {
-        p_user_id: user.id,
-        p_job_id: job_id,
-        p_error_txt: `Erro ao acionar motor de renderização: ${renderError.message}`
-      });
+      // Reverter status para failed no banco
+      await supabaseAdmin
+        .from('video_jobs')
+        .update({ status: 'failed' })
+        .eq('id', job_id);
 
       return NextResponse.json(
-        { error: 'Falha ao iniciar o processo de renderização com o motor externo. Seu crédito foi estornado.' },
+        { error: `Falha ao iniciar o processo de renderização com o motor externo: ${renderError.message}` },
         { status: 500 }
       );
     }
