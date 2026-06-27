@@ -184,7 +184,8 @@ export async function POST(req: NextRequest) {
       credits,
       pixCode,
       pixQrCode,
-      invoiceUrl
+      invoiceUrl,
+      userId: user.id
     });
 
   } catch (error: any) {

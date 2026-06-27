@@ -86,7 +86,11 @@ export default function UpgradeModal() {
   };
 
   const handleSimulatePayment = async () => {
-    if (!checkoutData || !userId) return;
+    const finalUserId = userId || checkoutData?.userId;
+    if (!checkoutData || !finalUserId) {
+      console.warn('Simulação cancelada: dados da cobrança ou do usuário ausentes.', { checkoutData, userId });
+      return;
+    }
     setSimulationLoading(true);
     try {
       const response = await fetch('/api/payment/simulate-webhook', {
@@ -96,7 +100,7 @@ export default function UpgradeModal() {
         },
         body: JSON.stringify({
           paymentId: checkoutData.paymentId,
-          userId: userId,
+          userId: finalUserId,
           value: checkoutData.value,
           credits: checkoutData.credits
         })
