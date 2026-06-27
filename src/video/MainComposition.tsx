@@ -1,5 +1,5 @@
 import React from 'react';
-import { Audio, getInputProps } from 'remotion';
+import { Audio, getInputProps, useCurrentFrame, useVideoConfig } from 'remotion';
 import { RemotionVideoProps } from './types';
 import { VideoSequence } from './VideoSequence';
 import { SubtitleOverlay } from './SubtitleOverlay';
@@ -9,6 +9,11 @@ export const MainComposition: React.FC<RemotionVideoProps> = (propsFromPlayer) =
   const audio_url = propsFromPlayer?.audio_url || propsFromCLI?.audio_url;
   const video_urls = propsFromPlayer?.video_urls || propsFromCLI?.video_urls;
   const subtitles = propsFromPlayer?.subtitles || propsFromCLI?.subtitles;
+  const style_config = propsFromPlayer?.style_config || propsFromCLI?.style_config;
+
+  const frame = useCurrentFrame();
+  const { durationInFrames } = useVideoConfig();
+  const progress = durationInFrames > 0 ? (frame / durationInFrames) * 100 : 0;
 
   // Normalização das legendas para garantir que todas possuam start e end definidos
   const normalizedSubtitles = (subtitles || []).map((sub, index) => {
@@ -41,7 +46,7 @@ export const MainComposition: React.FC<RemotionVideoProps> = (propsFromPlayer) =
       {audio_url && <Audio src={audio_url} />}
 
       {/* 2. Sequenciador de clipes (Pexels) */}
-      <VideoSequence video_urls={video_urls || []} subtitles={normalizedSubtitles} />
+      <VideoSequence video_urls={video_urls || []} subtitles={normalizedSubtitles} style_config={style_config} />
 
       {/* Camada uniforme preta de opacidade para contraste (40%) */}
       <div 
@@ -58,7 +63,24 @@ export const MainComposition: React.FC<RemotionVideoProps> = (propsFromPlayer) =
       />
 
       {/* 3. Overlay de Legendas Dinâmicas */}
-      <SubtitleOverlay subtitles={normalizedSubtitles} />
+      <SubtitleOverlay subtitles={normalizedSubtitles} style_config={style_config} />
+
+      {/* 4. Barra de Progresso Dinâmica (opcional por estilo) */}
+      {style_config?.progressBar && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            height: '16px',
+            width: `${progress}%`,
+            background: `linear-gradient(90deg, ${style_config.highlightColor || '#FFD700'} 0%, ${style_config.textColor || '#FFFFFF'} 100%)`,
+            zIndex: 20,
+            boxShadow: `0 0 8px ${style_config.highlightColor || '#FFD700'}`,
+          }}
+        />
+      )}
     </div>
   );
 };
+

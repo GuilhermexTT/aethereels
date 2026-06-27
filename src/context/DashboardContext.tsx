@@ -34,7 +34,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
 
-      const response = await fetch('/api/profile/credits', {
+      const response = await fetch(`/api/profile/credits?userId=${session?.user?.id || ''}`, {
         headers: {
           ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
         }
@@ -55,12 +55,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
     // Ouvir mudanças no estado de autenticação para recarregar créditos
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const secureFlag = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
       if (session?.user) {
         // Toda vez que o estado do usuário muda, atualiza o cookie também
-        document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax; Secure`;
+        document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax${secureFlag}`;
         await refreshCredits();
       } else {
-        document.cookie = `sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax; Secure`;
+        document.cookie = `sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax${secureFlag}`;
         await refreshCredits();
       }
     });

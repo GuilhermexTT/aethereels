@@ -59,7 +59,8 @@ export default function UpgradeModal() {
         },
         body: JSON.stringify({
           plan: selectedPlan,
-          billingType: 'PIX'
+          billingType: 'PIX',
+          userId: userId // Passar userId logado como fallback seguro para dev
         })
       });
 

@@ -33,16 +33,19 @@ export async function POST(req: NextRequest) {
       const amount = Number(payment.value);
       const status = payment.status;
 
-      // Obter user_id de externalReference ou metaData
-      const userId = payment.externalReference || payment.metaData?.user_id;
+      // Obter metadata de forma insensível a maiúsculas/minúsculas (Asaas API = metadata, simulador antigo = metaData)
+      const metadata = payment.metadata || payment.metaData;
+
+      // Obter user_id de externalReference ou metadata
+      const userId = payment.externalReference || metadata?.user_id || metadata?.userId;
 
       if (!userId) {
-        console.error('[ASAAS WEBHOOK] ID do usuário (externalReference/metaData.user_id) não encontrado.');
+        console.error('[ASAAS WEBHOOK] ID do usuário (externalReference/metadata.user_id) não encontrado.');
         return NextResponse.json({ error: 'ID do usuário não fornecido.' }, { status: 400 });
       }
 
-      // Obter quantidade de créditos do metaData ou determinar pelo valor pago (fallback)
-      let creditsAdded = Number(payment.metaData?.credits);
+      // Obter quantidade de créditos do metadata ou determinar pelo valor pago (fallback)
+      let creditsAdded = Number(metadata?.credits);
       if (!creditsAdded || isNaN(creditsAdded)) {
         if (amount >= 39.0 && amount <= 40.0) {
           creditsAdded = 350; // Plano Starter

@@ -9,8 +9,22 @@ export interface SubtitleItem {
   transition?: 'none' | 'fade' | 'wipe';
 }
 
+export interface StyleConfig {
+  template: 'clean_business' | 'viral_hyper' | 'cyber_aesthetic';
+  fontFamily?: string;
+  fontSize?: string;
+  textColor?: string;
+  highlightColor?: string;
+  textGlow?: boolean;
+  emojiEnabled?: boolean;
+  autoZoom?: boolean;
+  progressBar?: boolean;
+}
+
 export interface RemotionVideoProps {
   audio_url: string;
   video_urls: string[];
   subtitles: SubtitleItem[];
+  style_config?: StyleConfig;
 }
+

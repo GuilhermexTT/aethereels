@@ -10,33 +10,7 @@ function getTomorrowDate() {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Autenticar usuário
-    const supabaseUser = await getSupabaseUserClientFromRequest();
-    const token = await getSupabaseUserTokenFromRequest();
-
-    let user: any = null;
-    try {
-      const { data: { user: supabaseAuthUser } } = await supabaseUser.auth.getUser(token);
-      user = supabaseAuthUser;
-    } catch (err) {
-      console.log('Nenhuma sessão ativa encontrada via cookies/auth headers.');
-    }
-
-    if (!user) {
-      if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
-        // Obter usuário padrão
-        const { data: existingProfiles } = await supabaseAdmin.from('profiles').select('id, email').limit(1);
-        if (existingProfiles && existingProfiles.length > 0) {
-          user = existingProfiles[0];
-        }
-      }
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
-    }
-
-    // 2. Obter plano e método de pagamento do request body
+    // 1. Obter plano, método de pagamento e userId do corpo do request
     let body;
     try {
       body = await req.json();
@@ -44,7 +18,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
     }
     
-    const { plan, billingType = 'PIX' } = body;
+    const { plan, billingType = 'PIX', userId } = body;
+
+    // 2. Autenticar usuário via token de sessão
+    const supabaseUser = await getSupabaseUserClientFromRequest();
+    const token = await getSupabaseUserTokenFromRequest();
+
+    let user: any = null;
+    let authError: any = null;
+    if (token) {
+      try {
+        const { data: { user: supabaseAuthUser }, error } = await supabaseUser.auth.getUser(token);
+        user = supabaseAuthUser;
+        authError = error;
+      } catch (err: any) {
+        console.error('[CHECKOUT] Erro ao chamar getUser via token:', err.message);
+      }
+    }
+
+    // Em desenvolvimento, se o token falhar ou não estiver presente, usamos o userId do body como fallback
+    if (!user && (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV)) {
+      if (userId) {
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('id, email')
+          .eq('id', userId)
+          .maybeSingle();
+        if (profile) {
+          user = profile;
+          console.log(`[CHECKOUT] Usando userId do corpo da requisição em desenvolvimento: ${user.email} (${user.id})`);
+        }
+      }
+    }
+
+
+
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado. Identificação do usuário necessária.' }, { status: 401 });
+    }
 
     // Mapear os planos
     let value = 0;
@@ -91,7 +102,7 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({
             name: user.email.split('@')[0],
             email: user.email,
-            cpfCnpj: '44598765239' // CPF fictício obrigatório
+            cpfCnpj: '99991111140' // CPF de homologação recomendado pelo Asaas
           })
         });
 
@@ -107,15 +118,21 @@ export async function POST(req: NextRequest) {
         } else {
           const errorMsg = await customerRes.text();
           console.error('[ASAAS] Erro ao criar cliente no Asaas:', errorMsg);
+          return NextResponse.json({ error: `Falha ao criar cliente no Asaas Sandbox: ${errorMsg}` }, { status: 500 });
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('[ASAAS] Erro na requisição do customer:', err);
+        return NextResponse.json({ error: `Erro de conexão com gateway ao criar cliente: ${err.message}` }, { status: 500 });
       }
     }
 
-    // Se continuar nulo (mock ou falha), usamos um mock customer id
+    // Se continuar nulo (mock ou falha), usamos um mock customer id apenas se for mock real
     if (!asaasCustomerId) {
-      asaasCustomerId = 'cus_mock_customer_id';
+      if (isMock) {
+        asaasCustomerId = 'cus_mock_customer_id';
+      } else {
+        return NextResponse.json({ error: 'Falha ao identificar ou criar cliente no gateway Asaas.' }, { status: 500 });
+      }
     }
 
     let paymentId = `pay_${Math.random().toString(36).substring(7)}`;
@@ -139,6 +156,10 @@ export async function POST(req: NextRequest) {
             dueDate: getTomorrowDate(),
             externalReference: user.id,
             description: description,
+            metadata: {
+              user_id: user.id,
+              credits: credits
+            },
             metaData: {
               user_id: user.id,
               credits: credits

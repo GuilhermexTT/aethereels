@@ -197,9 +197,11 @@ export async function POST(request: NextRequest) {
           subtitles,
           audio_url,
           video_urls,
+          style_config: scriptJson.style_config || null,
           callback_url: callbackUrl
         }),
       });
+
 
       if (!renderResponse.ok) {
         const errText = await renderResponse.text();

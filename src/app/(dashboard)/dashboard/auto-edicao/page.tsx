@@ -1204,10 +1204,64 @@ export default function AutoEdicaoPage() {
             {activeTab === 'estilos' && (
               <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-900 scrollbar-track-transparent">
                 {/* Bloco 1: Seletores de Legenda */}
-                <div className="bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.06)] rounded-2xl p-4 flex flex-col gap-3 shrink-0">
+                <div className="bg-[#060a13] border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.06)] rounded-2xl p-4 flex flex-col gap-3.5 shrink-0">
                   <div className="flex items-center gap-2 border-b border-slate-900/60 pb-2.5">
                     <Sliders className="h-4.5 w-4.5 text-cyan-400" />
                     <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Ajuste de Design das Legendas</h3>
+                  </div>
+
+                  {/* Presets de Modelo de Edição */}
+                  <div className="flex flex-col gap-2 border-b border-slate-900/40 pb-3">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">
+                      Modelo de Edição (Preset)
+                    </span>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        onClick={() => {
+                          setNeonColor('#6366F1');
+                          setTextSize('medium');
+                          setFontFamily('Montserrat');
+                        }}
+                        className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                          neonColor === '#6366F1' && fontFamily === 'Montserrat'
+                            ? 'border-indigo-500/60 bg-indigo-500/10 text-white'
+                            : 'border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                        }`}
+                      >
+                        <span className="text-[10px] font-extrabold leading-tight">Clean</span>
+                        <span className="text-[7px] text-slate-500 font-medium mt-0.5">Elegante</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setNeonColor('#FFD700');
+                          setTextSize('large');
+                          setFontFamily('Montserrat');
+                        }}
+                        className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                          neonColor === '#FFD700' && fontFamily === 'Montserrat'
+                            ? 'border-indigo-500/60 bg-indigo-500/10 text-white'
+                            : 'border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                        }`}
+                      >
+                        <span className="text-[10px] font-extrabold leading-tight">Viral</span>
+                        <span className="text-[7px] text-slate-500 font-medium mt-0.5">Retenção</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setNeonColor('#FF00FF');
+                          setTextSize('medium');
+                          setFontFamily('Space Mono');
+                        }}
+                        className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                          neonColor === '#FF00FF' && fontFamily === 'Space Mono'
+                            ? 'border-indigo-500/60 bg-indigo-500/10 text-white'
+                            : 'border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                        }`}
+                      >
+                        <span className="text-[10px] font-extrabold leading-tight">Cyber</span>
+                        <span className="text-[7px] text-slate-500 font-medium mt-0.5">Futurista</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-6">
@@ -1282,7 +1336,7 @@ export default function AutoEdicaoPage() {
                         </span>
                       </span>
                       <div className="flex p-0.5 rounded-lg bg-slate-950 border border-[#16223f]/40">
-                        {['Montserrat', 'Poppins', 'Inter', 'Impact'].map(f => (
+                        {['Montserrat', 'Poppins', 'Inter', 'Impact', 'Space Mono'].map(f => (
                           <button
                             key={f}
                             onClick={() => setFontFamily(f)}

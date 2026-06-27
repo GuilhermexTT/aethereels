@@ -14,18 +14,25 @@ export async function GET(request: NextRequest) {
       // Sem sessão
     }
 
+    const { searchParams } = new URL(request.url);
+    const queryUserId = searchParams.get('userId');
+
     // Se não houver usuário logado no navegador e for ambiente de desenvolvimento
     if (!user) {
       if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
-        // Obter créditos do usuário de testes padrão (primeiro perfil do banco)
-        const { data: existingProfiles } = await supabaseAdmin
-          .from('profiles')
-          .select('id, credits')
-          .limit(1);
-
-        if (existingProfiles && existingProfiles.length > 0) {
-          return NextResponse.json({ credits: existingProfiles[0].credits });
+        if (queryUserId) {
+          const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('credits')
+            .eq('id', queryUserId)
+            .maybeSingle();
+          if (profile) {
+            console.log(`[CREDITS API] Usando userId da query string em desenvolvimento: ${queryUserId}. Saldo: ${profile.credits}`);
+            return NextResponse.json({ credits: profile.credits || 0 });
+          }
         }
+
+
       }
       return NextResponse.json({ credits: 0 });
     }

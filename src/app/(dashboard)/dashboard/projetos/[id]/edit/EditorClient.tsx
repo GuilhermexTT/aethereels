@@ -37,7 +37,7 @@ import {
   Trash2,
   Copy
 } from 'lucide-react';
-import { SubtitleItem } from '@/video/types';
+import { SubtitleItem, StyleConfig } from '@/video/types';
 import { useDashboard } from '@/context/DashboardContext';
 
 // Supabase client instance using standard client persistence
@@ -124,6 +124,17 @@ export default function EditorClient({ id }: EditorClientProps) {
   const [audioUrl, setAudioUrl] = useState('');
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
   const [subtitles, setSubtitles] = useState<SubtitleItem[]>([]);
+  const [styleConfig, setStyleConfig] = useState<StyleConfig>({
+    template: 'viral_hyper',
+    fontFamily: 'Montserrat',
+    fontSize: '84px',
+    textColor: '#FFFFFF',
+    highlightColor: '#FFD700',
+    textGlow: false,
+    emojiEnabled: true,
+    autoZoom: true,
+    progressBar: true
+  });
   
   // Estados da Aplicação
   const [isLoading, setIsLoading] = useState(true);
@@ -255,6 +266,10 @@ export default function EditorClient({ id }: EditorClientProps) {
               };
             });
             setSubtitles(mappedSubs);
+
+            if (scriptJson.style_config) {
+              setStyleConfig(scriptJson.style_config);
+            }
           }
         } else {
           alert('Projeto ou rascunho não localizado.');
@@ -605,7 +620,8 @@ export default function EditorClient({ id }: EditorClientProps) {
       const updatedScriptJson = {
         audio_url: audioUrl,
         video_urls: videoUrls,
-        subtitles: subtitles
+        subtitles: subtitles,
+        style_config: styleConfig
       };
 
       // Tenta atualizar video_drafts
@@ -641,7 +657,8 @@ export default function EditorClient({ id }: EditorClientProps) {
         inputProps: {
           audio_url: audioUrl,
           video_urls: finalUrls,
-          subtitles: subtitles
+          subtitles: subtitles,
+          style_config: styleConfig
         },
         tempFilePaths: tempPaths,
         draftId: draftDbId || id
@@ -955,6 +972,134 @@ export default function EditorClient({ id }: EditorClientProps) {
 
       {/* Direita: Player Remotion e Renderização */}
       <div className="w-[300px] sm:w-[320px] shrink-0 flex flex-col gap-5">
+        
+        {/* Presets Visuais (Modelos de Edição) */}
+        <div className="bg-[#060a13] border border-slate-900/60 shadow-[0_0_20px_rgba(59,130,246,0.02)] rounded-3xl p-4 flex flex-col gap-3.5 select-none">
+          <h3 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-indigo-400 animate-pulse" />
+            Modelo de Edição
+          </h3>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => {
+                setStyleConfig({
+                  template: 'clean_business',
+                  fontFamily: 'Montserrat',
+                  fontSize: '70px',
+                  textColor: '#FFFFFF',
+                  highlightColor: '#6366F1',
+                  textGlow: false,
+                  emojiEnabled: false,
+                  autoZoom: false,
+                  progressBar: false
+                });
+                setPlayerKey(Date.now());
+              }}
+              className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                styleConfig.template === 'clean_business'
+                  ? 'border-indigo-500/60 bg-indigo-500/10 text-white shadow-[0_0_10px_rgba(99,102,241,0.15)]'
+                  : 'border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+              }`}
+            >
+              <span className="text-[10px] font-extrabold leading-tight">Clean</span>
+              <span className="text-[7px] text-slate-500 font-medium mt-0.5">Elegante</span>
+            </button>
+            <button
+              onClick={() => {
+                setStyleConfig({
+                  template: 'viral_hyper',
+                  fontFamily: 'Montserrat',
+                  fontSize: '84px',
+                  textColor: '#FFFFFF',
+                  highlightColor: '#FFD700',
+                  textGlow: false,
+                  emojiEnabled: true,
+                  autoZoom: true,
+                  progressBar: true
+                });
+                setPlayerKey(Date.now());
+              }}
+              className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                styleConfig.template === 'viral_hyper'
+                  ? 'border-indigo-500/60 bg-indigo-500/10 text-white shadow-[0_0_10px_rgba(99,102,241,0.15)]'
+                  : 'border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+              }`}
+            >
+              <span className="text-[10px] font-extrabold leading-tight">Viral</span>
+              <span className="text-[7px] text-slate-500 font-medium mt-0.5">Retenção</span>
+            </button>
+            <button
+              onClick={() => {
+                setStyleConfig({
+                  template: 'cyber_aesthetic',
+                  fontFamily: 'Space Mono',
+                  fontSize: '76px',
+                  textColor: '#00F0FF',
+                  highlightColor: '#FF00FF',
+                  textGlow: true,
+                  emojiEnabled: false,
+                  autoZoom: false,
+                  progressBar: false
+                });
+                setPlayerKey(Date.now());
+              }}
+              className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                styleConfig.template === 'cyber_aesthetic'
+                  ? 'border-indigo-500/60 bg-indigo-500/10 text-white shadow-[0_0_10px_rgba(99,102,241,0.15)]'
+                  : 'border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+              }`}
+            >
+              <span className="text-[10px] font-extrabold leading-tight">Cyber</span>
+              <span className="text-[7px] text-slate-500 font-medium mt-0.5">Futurista</span>
+            </button>
+          </div>
+
+          {/* Ajustes Rápidos */}
+          <div className="flex flex-col gap-2.5 border-t border-slate-900/80 pt-3 mt-1 text-[10px] text-slate-400">
+            <div className="flex items-center justify-between">
+              <span>Mostrar Emojis</span>
+              <input
+                type="checkbox"
+                checked={!!styleConfig.emojiEnabled}
+                onChange={(e) => {
+                  setStyleConfig(prev => ({ ...prev, emojiEnabled: e.target.checked }));
+                  setPlayerKey(Date.now());
+                }}
+                className="rounded border-slate-800 bg-slate-900 text-indigo-600 focus:ring-indigo-500/30 h-3.5 w-3.5 cursor-pointer"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span>Barra de Progresso</span>
+              <input
+                type="checkbox"
+                checked={!!styleConfig.progressBar}
+                onChange={(e) => {
+                  setStyleConfig(prev => ({ ...prev, progressBar: e.target.checked }));
+                  setPlayerKey(Date.now());
+                }}
+                className="rounded border-slate-800 bg-slate-900 text-indigo-600 focus:ring-indigo-500/30 h-3.5 w-3.5 cursor-pointer"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span>Cor de Destaque</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="color"
+                  value={styleConfig.highlightColor || '#FFD700'}
+                  onChange={(e) => {
+                    setStyleConfig(prev => ({ ...prev, highlightColor: e.target.value }));
+                    setPlayerKey(Date.now());
+                  }}
+                  className="w-5 h-5 rounded-md border-0 bg-transparent cursor-pointer p-0"
+                />
+                <span className="font-mono uppercase text-[8px] text-slate-500">{styleConfig.highlightColor}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <h2 className="text-xs uppercase font-extrabold tracking-wider text-slate-500">Visualização em Tempo Real</h2>
         
         {/* Componente do Player Remotion */}
@@ -965,6 +1110,7 @@ export default function EditorClient({ id }: EditorClientProps) {
             videoUrls={videoUrls}
             subtitles={subtitles}
             durationInFrames={durationInFrames}
+            styleConfig={styleConfig}
             onActiveSceneChange={setCurrentPlayingIndex}
           />
 

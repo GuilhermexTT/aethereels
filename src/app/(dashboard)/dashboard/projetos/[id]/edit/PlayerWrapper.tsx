@@ -2,17 +2,18 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize } from 'lucide-react';
-import { SubtitleItem } from '@/video/types';
+import { SubtitleItem, StyleConfig } from '@/video/types';
 
 interface PlayerWrapperProps {
   audioUrl: string;
   videoUrls: string[];
   subtitles: SubtitleItem[];
   durationInFrames: number;
+  styleConfig?: StyleConfig;
   onActiveSceneChange?: (index: number) => void;
 }
 
-export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActiveSceneChange }: PlayerWrapperProps) {
+export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, styleConfig, onActiveSceneChange }: PlayerWrapperProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const currentTimeRef = useRef(0);
@@ -292,13 +293,54 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
     }
   };
 
+  // Resolvendo configurações do template ou usando padrões
+  const template = styleConfig?.template || 'viral_hyper';
+  const fontFamily = styleConfig?.fontFamily || 
+    (template === 'clean_business' ? '"Montserrat", sans-serif' : 
+     template === 'cyber_aesthetic' ? '"Space Mono", monospace' : 
+     '"Montserrat", "Poppins", sans-serif');
+
+  const textColor = styleConfig?.textColor || 
+    (template === 'cyber_aesthetic' ? '#00F0FF' : '#FFFFFF');
+
+  const highlightColor = styleConfig?.highlightColor || 
+    (template === 'clean_business' ? '#6366F1' : 
+     template === 'cyber_aesthetic' ? '#FF00FF' : 
+     '#FFD700');
+
+  const textGlow = styleConfig?.textGlow ?? (template === 'cyber_aesthetic');
+  const emojiEnabled = styleConfig?.emojiEnabled ?? (template === 'viral_hyper');
+
+  // Helpers de escala proporcional para o Player (que é menor que 1080x1920)
+  const getPlayerFontSize = () => {
+    if (styleConfig?.fontSize) {
+      const val = parseInt(styleConfig.fontSize);
+      if (!isNaN(val)) return `${Math.round(val * 0.26)}px`;
+    }
+    return template === 'clean_business' ? '18px' : template === 'cyber_aesthetic' ? '20px' : '22px';
+  };
+
+  const getPlayerPaddingBottom = () => {
+    return template === 'clean_business' ? '73px' : template === 'cyber_aesthetic' ? '83px' : '104px';
+  };
+
+  // Safe-zones: Estilos de sombra e contorno
+  let textShadow = 'none';
+  if (template === 'viral_hyper') {
+    textShadow = '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 2px 5px rgba(0,0,0,0.8)';
+  } else if (template === 'clean_business') {
+    textShadow = '0px 1.5px 3px rgba(0, 0, 0, 0.6)';
+  } else if (template === 'cyber_aesthetic' && textGlow) {
+    textShadow = `0 0 2px ${textColor}, 0 0 4px ${textColor}, 0 0 8px ${highlightColor}`;
+  }
+
   return (
     <div 
       ref={containerRef} 
       className="w-full h-full bg-black flex items-center justify-center relative rounded-[1.25rem] overflow-hidden group/player"
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&family=Poppins:wght@800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&family=Poppins:wght@800;900&family=Space+Mono:wght@700&family=Share+Tech+Mono&display=swap');
         
         @keyframes previewFadeIn {
           from { opacity: 0; }
@@ -307,6 +349,14 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
         @keyframes previewKenBurns {
           from { transform: scale(1.0); }
           to { transform: scale(1.12); }
+        }
+        @keyframes previewKenBurnsViral {
+          from { transform: scale(1.06); }
+          to { transform: scale(1.20); }
+        }
+        @keyframes previewKenBurnsCyber {
+          from { transform: scale(1.12); }
+          to { transform: scale(1.03); }
         }
 
         /* Estilos para manter proporção 9:16 em tela cheia */
@@ -340,6 +390,21 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
           const activeSub = activeSubIndex !== -1 ? normalizedSubtitles[activeSubIndex] : null;
           const clipDuration = activeSub ? (activeSub.end - activeSub.start) : 3;
 
+          const isCyber = template === 'cyber_aesthetic';
+          const filter = isCyber 
+            ? 'contrast(1.2) brightness(0.85) saturate(0.9) hue-rotate(-10deg)' 
+            : 'none';
+
+          const kenBurnsAnimation = template === 'viral_hyper' 
+            ? 'previewKenBurnsViral' 
+            : isCyber 
+              ? 'previewKenBurnsCyber' 
+              : 'previewKenBurns';
+
+          const animationStyle = isActive
+            ? `${isCyber ? '' : 'previewFadeIn 0.5s ease-out forwards, '}${kenBurnsAnimation} ${clipDuration}s linear forwards, previewDummy-${activeSubIndex} 0s`
+            : 'none';
+
           return (
             <video
               key={idx}
@@ -349,9 +414,8 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
               style={{
                 opacity: isActive ? 1 : 0,
                 pointerEvents: isActive ? 'auto' : 'none',
-                animation: isActive
-                  ? `previewFadeIn 0.5s ease-out forwards, previewKenBurns ${clipDuration}s linear forwards, previewDummy-${activeSubIndex} 0s`
-                  : 'none',
+                animation: animationStyle,
+                filter,
               }}
               loop
               playsInline
@@ -382,7 +446,13 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
           );
           if (!activeSubtitle || !activeSubtitle.text.trim()) return null;
 
-          const words = activeSubtitle.text.trim().split(/\s+/);
+          // Filtro de Emojis
+          let textToRender = activeSubtitle.text.trim();
+          if (!emojiEnabled) {
+            textToRender = textToRender.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '');
+          }
+
+          const words = textToRender.split(/\s+/).filter(Boolean);
           const totalWords = words.length;
           const subtitleDuration = activeSubtitle.end - activeSubtitle.start;
           const elapsed = currentTime - activeSubtitle.start;
@@ -393,6 +463,9 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
                 totalWords - 1
               )
             : 0;
+
+          const isHookPeriod = currentTime < 3.0;
+          const hookScale = isHookPeriod ? 1.20 : 1.0;
 
           return (
             <div
@@ -405,31 +478,74 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'flex-end',
-                paddingBottom: '85px',
+                paddingBottom: getPlayerPaddingBottom(),
                 paddingLeft: '20px',
                 paddingRight: '20px',
                 pointerEvents: 'none',
                 zIndex: 30,
+                transform: `scale(${hookScale})`,
+                transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
               <h1
                 style={{
-                  fontFamily: '"Montserrat", "Poppins", "Arial Black", sans-serif',
-                  fontSize: '22px',
-                  fontWeight: 900,
-                  textTransform: 'uppercase',
+                  fontFamily,
+                  fontSize: getPlayerFontSize(),
+                  fontWeight: template === 'clean_business' ? 800 : 900,
+                  textTransform: template === 'clean_business' ? 'none' : 'uppercase',
                   textAlign: 'center',
                   lineHeight: 1.25,
-                  letterSpacing: '1.5px',
+                  letterSpacing: template === 'cyber_aesthetic' ? '1.5px' : '0.5px',
                   display: 'flex',
                   flexWrap: 'wrap',
                   justifyContent: 'center',
-                  textShadow: '0 2px 4px rgba(0,0,0,0.8), 0 4px 10px rgba(0,0,0,0.4)',
+                  textShadow,
                 }}
               >
                 {words.map((word: string, index: number) => {
                   const isActive = index === activeWordIndex;
                   
+                  // 1. ANIMAÇÃO: CLEAN & BUSINESS
+                  if (template === 'clean_business') {
+                    const isFuture = index > activeWordIndex;
+                    return (
+                      <span
+                        key={index}
+                        style={{
+                          color: isActive ? highlightColor : textColor,
+                          opacity: isFuture ? 0.35 : 1.0,
+                          marginRight: '5px',
+                          display: 'inline-block',
+                          transition: 'color 0.15s ease, opacity 0.2s ease',
+                        }}
+                      >
+                        {word}
+                      </span>
+                    );
+                  }
+
+                  // 2. ANIMAÇÃO: CYBER AESTHETIC
+                  if (template === 'cyber_aesthetic') {
+                    const isFuture = index > activeWordIndex;
+                    if (isFuture) return null;
+
+                    return (
+                      <span
+                        key={index}
+                        style={{
+                          color: isActive ? highlightColor : textColor,
+                          marginRight: '5px',
+                          display: 'inline-block',
+                          borderRight: isActive ? `2px solid ${highlightColor}` : 'none',
+                          paddingRight: isActive ? '2px' : '0px',
+                        }}
+                      >
+                        {word}
+                      </span>
+                    );
+                  }
+
+                  // 3. ANIMAÇÃO: VIRAL HYPER
                   const wordDuration = subtitleDuration / totalWords;
                   const wordStart = activeSubtitle.start + index * wordDuration;
                   const wordElapsed = currentTime - wordStart;
@@ -450,7 +566,7 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
                     <span
                       key={index}
                       style={{
-                        color: isActive ? '#FFD700' : '#FFFFFF',
+                        color: isActive ? highlightColor : textColor,
                         marginRight: '5px',
                         display: 'inline-block',
                         transform: `scale(${scale})`,
@@ -465,6 +581,22 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
             </div>
           );
         })()}
+
+        {/* Barra de Progresso Dinâmica do Estilo */}
+        {styleConfig?.progressBar && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '8px', // logo acima da barra de progresso interativa
+              left: 0,
+              height: '4px',
+              width: `${totalDuration ? (currentTime / totalDuration) * 100 : 0}%`,
+              background: `linear-gradient(90deg, ${highlightColor} 0%, ${textColor} 100%)`,
+              zIndex: 25,
+              boxShadow: `0 0 4px ${highlightColor}`,
+            }}
+          />
+        )}
 
         {/* Barra de Progresso Interativa */}
         <div 
@@ -515,3 +647,4 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, onActive
     </div>
   );
 }
+

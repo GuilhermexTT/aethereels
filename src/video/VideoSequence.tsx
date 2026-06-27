@@ -1,31 +1,60 @@
 import React from 'react';
 import { Sequence, Video, Img, useCurrentFrame, interpolate } from 'remotion';
-import { SubtitleItem } from './types';
+import { SubtitleItem, StyleConfig } from './types';
 
 interface VideoSequenceProps {
   video_urls: string[];
   subtitles: Omit<SubtitleItem, 'start_time' | 'duration'>[];
+  style_config?: StyleConfig;
 }
 
 const SceneItem: React.FC<{
   src: string;
   durationInFrames: number;
-}> = ({ src, durationInFrames }) => {
+  style_config?: StyleConfig;
+}> = ({ src, durationInFrames, style_config }) => {
   const frame = useCurrentFrame();
 
   const safeDuration = isNaN(durationInFrames) || durationInFrames <= 0 ? 30 : durationInFrames;
 
   // Fade-in suave de 15 frames (0.5s a 30fps) no início de cada cena
-  const opacity = !isNaN(frame) ? interpolate(frame, [0, Math.min(15, safeDuration)], [0, 1], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  }) : 1;
+  // No Cyber Aesthetic, as transições são cortes secos (sem fade-in)
+  const isCyber = style_config?.template === 'cyber_aesthetic';
+  const opacity = !isNaN(frame) 
+    ? (isCyber ? 1 : interpolate(frame, [0, Math.min(15, safeDuration)], [0, 1], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+      }))
+    : 1;
 
-  // Efeito Ken Burns: Zoom-in sutil e contínuo de 1.0 a 1.12 ao longo de toda a duração da cena
-  const scale = !isNaN(frame) ? interpolate(frame, [0, safeDuration], [1.0, 1.12], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  }) : 1;
+  // Ajustes de Escala (Zoom) baseados no Template
+  let scale = 1;
+  if (!isNaN(frame)) {
+    if (style_config?.template === 'viral_hyper') {
+      // Viral Hyper: Começa com zoom de impacto e cresce mais agressivamente
+      scale = interpolate(frame, [0, safeDuration], [1.06, 1.20], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+      });
+    } else if (style_config?.template === 'cyber_aesthetic') {
+      // Cyber: Zoom-out sutil futurista
+      scale = interpolate(frame, [0, safeDuration], [1.12, 1.03], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+      });
+    } else {
+      // Clean & Business / Padrão: Ken Burns suave tradicional
+      scale = interpolate(frame, [0, safeDuration], [1.0, 1.12], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+      });
+    }
+  }
+
+  // Filtros de imagem/vídeo para o Cyber Aesthetic (Dark Mode de alto contraste)
+  const filter = isCyber 
+    ? 'contrast(1.2) brightness(0.85) saturate(0.9) hue-rotate(-10deg)' 
+    : 'none';
 
   if (!src) return null;
 
@@ -37,6 +66,7 @@ const SceneItem: React.FC<{
     objectFit: 'cover',
     opacity,
     transform: `scale(${scale})`,
+    filter,
   };
 
   if (isImage) {
@@ -52,7 +82,7 @@ const SceneItem: React.FC<{
   );
 };
 
-export const VideoSequence: React.FC<VideoSequenceProps> = ({ video_urls, subtitles }) => {
+export const VideoSequence: React.FC<VideoSequenceProps> = ({ video_urls, subtitles, style_config }) => {
   // Filter out invalid video urls or placeholders
   const validUrls = (video_urls || []).filter(url => typeof url === 'string' && url.trim().length > 0);
   
@@ -76,10 +106,11 @@ export const VideoSequence: React.FC<VideoSequenceProps> = ({ video_urls, subtit
             durationInFrames={durationInFrames}
             layout="none"
           >
-            <SceneItem src={videoSrc} durationInFrames={durationInFrames} />
+            <SceneItem src={videoSrc} durationInFrames={durationInFrames} style_config={style_config} />
           </Sequence>
         );
       })}
     </>
   );
 };
+
