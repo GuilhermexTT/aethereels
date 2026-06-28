@@ -159,29 +159,75 @@ export async function POST(req: NextRequest) {
     await s3Client.send(s3Command);
     const audioUrl = `https://${bucketName}.s3.${process.env.REMOTION_AWS_REGION || 'us-east-2'}.amazonaws.com/user-uploads/${sanitizedFilename}`;
 
-    // 8. Recalcular tempos dos blocos (timestamps)
+    // 8. Recalcular tempos dos blocos (timestamps) usando os dados reais de alinhamento da ElevenLabs
+    const startTimes = alignment?.character_start_times_seconds;
     const endTimes = alignment?.character_end_times_seconds;
-    let totalDuration = textToSpeak.length * 0.08; // Fallback: 80ms por caractere
-    if (endTimes && Array.isArray(endTimes) && endTimes.length > 0) {
-      totalDuration = endTimes[endTimes.length - 1];
+    const alignChars = alignment?.characters || [];
+    
+    let cleanSubtitles = [];
+    
+    if (startTimes && endTimes && Array.isArray(startTimes) && Array.isArray(endTimes) && startTimes.length > 0) {
+      console.log(`[ElevenLabs Sync] Sincronizando legendas com alinhamento real. Caracteres alinhados: ${startTimes.length}`);
+      
+      let alignIdx = 0;
+      cleanSubtitles = subtitles.map((sub: any, i: number) => {
+        const text = texts[i] || '';
+        
+        // Pular caracteres vazios no início
+        while (alignIdx < alignChars.length && !alignChars[alignIdx].trim()) {
+          alignIdx++;
+        }
+        
+        // Pular pontuação de separação " . "
+        while (alignIdx < alignChars.length && (alignChars[alignIdx] === '.' || alignChars[alignIdx] === ' ')) {
+          alignIdx++;
+        }
+        
+        const start = alignIdx < startTimes.length ? startTimes[alignIdx] : (startTimes[startTimes.length - 1] || 0);
+        
+        // Avançar pelo tamanho do texto da legenda correspondente
+        let textCharCount = 0;
+        const targetLen = text.length;
+        while (alignIdx < alignChars.length && textCharCount < targetLen) {
+          alignIdx++;
+          textCharCount++;
+        }
+        
+        const lastIndex = Math.max(0, alignIdx - 1);
+        const end = lastIndex < endTimes.length ? endTimes[lastIndex] : (endTimes[endTimes.length - 1] || start + 1.5);
+        
+        return {
+          ...sub,
+          start,
+          end,
+          text
+        };
+      });
+    } else {
+      // Fallback robusto caso a ElevenLabs não retorne o alinhamento de caracteres
+      console.warn('[ElevenLabs Sync] Alinhamento não disponível. Usando fallback de proporção linear.');
+      let totalDuration = textToSpeak.length * 0.08; // Fallback: 80ms por caractere
+      if (endTimes && Array.isArray(endTimes) && endTimes.length > 0) {
+        totalDuration = endTimes[endTimes.length - 1];
+      }
+  
+      const totalChars = texts.reduce((sum: number, t: string) => sum + t.length, 0);
+      let currentStart = 0;
+      cleanSubtitles = subtitles.map((sub: any, i: number) => {
+        const textLen = texts[i].length;
+        const ratio = totalChars > 0 ? textLen / totalChars : 1 / subtitles.length;
+        const duration = totalDuration * ratio;
+        const start = currentStart;
+        const end = currentStart + duration;
+        currentStart = end;
+        return {
+          ...sub,
+          start,
+          end,
+          text: texts[i]
+        };
+      });
     }
-
-    const totalChars = texts.reduce((sum: number, t: string) => sum + t.length, 0);
-    let currentStart = 0;
-    const cleanSubtitles = subtitles.map((sub: any, i: number) => {
-      const textLen = texts[i].length;
-      const ratio = totalChars > 0 ? textLen / totalChars : 1 / subtitles.length;
-      const duration = totalDuration * ratio;
-      const start = currentStart;
-      const end = currentStart + duration;
-      currentStart = end;
-      return {
-        ...sub,
-        start,
-        end,
-        text: texts[i]
-      };
-    });
 
     // 9. Atualizar script_json no Banco de Dados
     const updatedScriptJson = {
