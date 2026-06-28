@@ -955,12 +955,46 @@ export default function EditorClient({ id }: EditorClientProps) {
                     <div className="relative flex justify-center">
                       <button 
                         type="button" 
-                        onClick={() => alert(`Escolher transição entre cena ${index + 1} e ${index + 2} (Funcionalidade futura)`)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-900 text-[10px] font-bold text-slate-500 hover:text-indigo-400 shadow-md transition-all active:scale-95 group/trans-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveTransitionPopover(activeTransitionPopover === index ? null : index);
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950 border transition-all active:scale-95 group/trans-btn cursor-pointer ${
+                          scene.transition && scene.transition !== 'none'
+                            ? 'border-indigo-500 text-indigo-400 bg-slate-900'
+                            : 'border-slate-800 text-slate-500 hover:border-indigo-500/50 hover:text-indigo-400 hover:bg-slate-900'
+                        }`}
                       >
                         <Plus className="h-3 w-3 text-slate-500 group-hover/trans-btn:text-indigo-400 group-hover/trans-btn:rotate-90 transition-transform duration-300" />
-                        <span>Escolher Transição</span>
+                        <span>
+                          {scene.transition === 'fade' 
+                            ? '✨ Fade' 
+                            : scene.transition === 'wipe' 
+                              ? '➡️ Wipe' 
+                              : 'Escolher Transição'}
+                        </span>
                       </button>
+
+                      {/* Popover de transição na lista vertical */}
+                      {activeTransitionPopover === index && (
+                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-28 bg-[#060a13] border border-blue-500/30 rounded-xl p-1.5 shadow-2xl flex flex-col gap-1 z-50 animate-fade-in">
+                          <span className="text-[8px] text-slate-500 uppercase font-extrabold px-1.5 py-0.5 select-none">Transição</span>
+                          {(['none', 'fade', 'wipe'] as const).map((opt) => (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => handleTransitionChange(index, opt)}
+                              className={`px-2 py-1 text-left text-[9px] font-bold rounded-lg transition-all cursor-pointer ${
+                                (scene.transition || 'none') === opt
+                                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+                              }`}
+                            >
+                              {opt === 'none' ? '❌ Nenhuma' : opt === 'fade' ? '✨ Fade' : '➡️ Wipe'}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
