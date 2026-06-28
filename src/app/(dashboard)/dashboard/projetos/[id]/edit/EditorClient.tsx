@@ -960,16 +960,16 @@ export default function EditorClient({ id }: EditorClientProps) {
                           setActiveTransitionPopover(activeTransitionPopover === index ? null : index);
                         }}
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950 border transition-all active:scale-95 group/trans-btn cursor-pointer ${
-                          scene.transition && scene.transition !== 'none'
+                          subtitles[index + 1]?.transition && subtitles[index + 1]?.transition !== 'none'
                             ? 'border-indigo-500 text-indigo-400 bg-slate-900'
                             : 'border-slate-800 text-slate-500 hover:border-indigo-500/50 hover:text-indigo-400 hover:bg-slate-900'
                         }`}
                       >
                         <Plus className="h-3 w-3 text-slate-500 group-hover/trans-btn:text-indigo-400 group-hover/trans-btn:rotate-90 transition-transform duration-300" />
                         <span>
-                          {scene.transition === 'fade' 
+                          {subtitles[index + 1]?.transition === 'fade' 
                             ? '✨ Fade' 
-                            : scene.transition === 'wipe' 
+                            : subtitles[index + 1]?.transition === 'wipe' 
                               ? '➡️ Wipe' 
                               : 'Escolher Transição'}
                         </span>
@@ -984,13 +984,13 @@ export default function EditorClient({ id }: EditorClientProps) {
                               key={opt}
                               type="button"
                               onClick={() => {
-                                handleTransitionChange(index, opt);
+                                handleTransitionChange(index + 1, opt);
                                 if (opt === 'none') {
                                   setActiveTransitionPopover(null);
                                 }
                               }}
                               className={`px-2 py-1 text-left text-[9px] font-bold rounded-lg transition-all cursor-pointer ${
-                                (scene.transition || 'none') === opt
+                                (subtitles[index + 1]?.transition || 'none') === opt
                                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
                                   : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
                               }`}
@@ -998,19 +998,19 @@ export default function EditorClient({ id }: EditorClientProps) {
                               {opt === 'none' ? '❌ Nenhuma' : opt === 'fade' ? '✨ Fade' : '➡️ Wipe'}
                             </button>
                           ))}
-                          {scene.transition && scene.transition !== 'none' && (
+                          {subtitles[index + 1]?.transition && subtitles[index + 1]?.transition !== 'none' && (
                             <div className="flex flex-col gap-1 mt-1.5 pt-1.5 border-t border-slate-900/60 select-none">
                               <div className="flex items-center justify-between px-1 text-[8px] font-bold text-slate-500">
                                 <span>Duração</span>
-                                <span className="text-indigo-400">{(scene.transitionDuration ?? 0.5).toFixed(1)}s</span>
+                                <span className="text-indigo-400">{(subtitles[index + 1]?.transitionDuration ?? 0.5).toFixed(1)}s</span>
                               </div>
                               <input 
                                 type="range"
                                 min="0.1"
                                 max="5.0"
                                 step="0.1"
-                                value={scene.transitionDuration ?? 0.5}
-                                onChange={(e) => handleTransitionChange(index, scene.transition!, parseFloat(e.target.value))}
+                                value={subtitles[index + 1]?.transitionDuration ?? 0.5}
+                                onChange={(e) => handleTransitionChange(index + 1, subtitles[index + 1]?.transition!, parseFloat(e.target.value))}
                                 className="w-full h-1 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                               />
                             </div>
@@ -1315,14 +1315,14 @@ export default function EditorClient({ id }: EditorClientProps) {
                           setActiveTransitionPopover(activeTransitionPopover === index ? null : index);
                         }}
                         className={`p-1.5 rounded-full border transition-all active:scale-90 cursor-pointer shadow-[0_0_10px_rgba(0,0,0,0.5)] ${
-                          scene.transition && scene.transition !== 'none'
+                          subtitles[index + 1]?.transition && subtitles[index + 1]?.transition !== 'none'
                             ? 'bg-indigo-600/90 border-indigo-400 text-indigo-200'
                             : 'bg-[#090e18] border-slate-800/80 text-slate-500 hover:text-slate-200 hover:border-slate-700'
                         }`}
-                        title={`Transição: ${scene.transition || 'Nenhuma'}`}
+                        title={`Transição: ${subtitles[index + 1]?.transition || 'Nenhuma'}`}
                       >
                         <span className="text-[9px] font-bold px-0.5 leading-none">
-                          {scene.transition === 'fade' ? '✨' : scene.transition === 'wipe' ? '➡️' : '⧉'}
+                          {subtitles[index + 1]?.transition === 'fade' ? '✨' : subtitles[index + 1]?.transition === 'wipe' ? '➡️' : '⧉'}
                         </span>
                       </button>
 
@@ -1335,13 +1335,13 @@ export default function EditorClient({ id }: EditorClientProps) {
                               key={opt}
                               type="button"
                               onClick={() => {
-                                handleTransitionChange(index, opt);
+                                handleTransitionChange(index + 1, opt);
                                 if (opt === 'none') {
                                   setActiveTransitionPopover(null);
                                 }
                               }}
                               className={`px-2 py-1 text-left text-[9px] font-bold rounded-lg transition-all cursor-pointer ${
-                                (scene.transition || 'none') === opt
+                                (subtitles[index + 1]?.transition || 'none') === opt
                                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
                                   : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
                               }`}
@@ -1349,19 +1349,19 @@ export default function EditorClient({ id }: EditorClientProps) {
                               {opt === 'none' ? '❌ Nenhuma' : opt === 'fade' ? '✨ Fade' : '➡️ Wipe'}
                             </button>
                           ))}
-                          {scene.transition && scene.transition !== 'none' && (
+                          {subtitles[index + 1]?.transition && subtitles[index + 1]?.transition !== 'none' && (
                             <div className="flex flex-col gap-1 mt-1.5 pt-1.5 border-t border-slate-900/60 select-none">
                               <div className="flex items-center justify-between px-1 text-[8px] font-bold text-slate-500">
                                 <span>Duração</span>
-                                <span className="text-indigo-400">{(scene.transitionDuration ?? 0.5).toFixed(1)}s</span>
+                                <span className="text-indigo-400">{(subtitles[index + 1]?.transitionDuration ?? 0.5).toFixed(1)}s</span>
                               </div>
                               <input 
                                 type="range"
                                 min="0.1"
                                 max="5.0"
                                 step="0.1"
-                                value={scene.transitionDuration ?? 0.5}
-                                onChange={(e) => handleTransitionChange(index, scene.transition!, parseFloat(e.target.value))}
+                                value={subtitles[index + 1]?.transitionDuration ?? 0.5}
+                                onChange={(e) => handleTransitionChange(index + 1, subtitles[index + 1]?.transition!, parseFloat(e.target.value))}
                                 className="w-full h-1 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                               />
                             </div>
