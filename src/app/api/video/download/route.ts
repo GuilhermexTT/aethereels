@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseUserClientFromRequest, supabaseAdmin, getSupabaseUserTokenFromRequest } from '@/lib/supabase';
+import { ensureS3VideoUrl } from '@/lib/s3';
 
 export async function POST(request: NextRequest) {
   try {
@@ -185,6 +186,20 @@ export async function POST(request: NextRequest) {
       callbackUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/webhooks/n8n-callback`;
     }
 
+    // Processa as URLs dos vídeos para garantir que estejam no S3 (evitando bloqueios de CDN no Lambda)
+    let processedVideoUrls = video_urls;
+    if (Array.isArray(video_urls)) {
+      console.log(`[Download API] Processando ${video_urls.length} URLs de vídeo para o S3...`);
+      try {
+        processedVideoUrls = await Promise.all(
+          video_urls.map((url: string) => ensureS3VideoUrl(url))
+        );
+      } catch (err: any) {
+        console.error('[Download API] Erro ao processar/upload de vídeos para o S3:', err.message);
+        // Prossegue com as originais em caso de falha crítica
+      }
+    }
+
     try {
       const renderResponse = await fetch(`${remotionEngineUrl}/render`, {
         method: 'POST',
@@ -196,7 +211,7 @@ export async function POST(request: NextRequest) {
           job_id,
           subtitles,
           audio_url,
-          video_urls,
+          video_urls: processedVideoUrls,
           style_config: scriptJson.style_config || null,
           callback_url: callbackUrl
         }),

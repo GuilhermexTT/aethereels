@@ -1,6 +1,7 @@
 import { NextResponse, after } from 'next/server';
 import { renderMediaOnLambda } from '@remotion/lambda-client';
 import { supabaseAdmin, getSupabaseUserClientFromRequest, getSupabaseUserTokenFromRequest } from '@/lib/supabase';
+import { ensureS3VideoUrl } from '@/lib/s3';
 
 // Mapear credenciais customizadas do .env.local para as esperadas internamente pelo AWS SDK do Remotion
 if (process.env.REMOTION_AWS_ACCESS_KEY_ID) {
@@ -133,6 +134,20 @@ export async function POST(request: Request) {
         .from('video_jobs')
         .update({ status: 'rendering' })
         .eq('id', draftId);
+    }
+
+    // Processa as URLs dos vídeos para garantir que estejam no S3 (evitando bloqueios de CDN no Lambda)
+    if (inputProps && Array.isArray(inputProps.video_urls)) {
+      console.log(`[Render API] Processando ${inputProps.video_urls.length} URLs de vídeo...`);
+      try {
+        const processedUrls = await Promise.all(
+          inputProps.video_urls.map((url: string) => ensureS3VideoUrl(url))
+        );
+        inputProps.video_urls = processedUrls;
+      } catch (err: any) {
+        console.error('[Render API] Erro ao processar/upload de vídeos para o S3:', err.message);
+        // Prossegue com as URLs originais em caso de falha crítica no S3 para tentar renderizar mesmo assim
+      }
     }
 
     // 🚀 Chama o supercomputador da AWS Lambda
