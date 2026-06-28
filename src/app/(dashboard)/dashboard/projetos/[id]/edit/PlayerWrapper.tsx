@@ -48,7 +48,8 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, styleCon
     return {
       text: String(sub.text || sub.word || ''),
       start,
-      end
+      end,
+      transition: sub.transition || 'none'
     };
   });
 
@@ -346,6 +347,10 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, styleCon
           from { opacity: 0; }
           to { opacity: 1; }
         }
+        @keyframes previewWipeIn {
+          from { clip-path: inset(0 100% 0 0); }
+          to { clip-path: inset(0 0 0 0); }
+        }
         @keyframes previewKenBurns {
           from { transform: scale(1.0); }
           to { transform: scale(1.12); }
@@ -401,8 +406,16 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, styleCon
               ? 'previewKenBurnsCyber' 
               : 'previewKenBurns';
 
+          const sceneTransition = normalizedSubtitles[idx]?.transition || 'none';
+          let transitionAnimation = '';
+          if (sceneTransition === 'fade') {
+            transitionAnimation = 'previewFadeIn 0.5s ease-out forwards, ';
+          } else if (sceneTransition === 'wipe') {
+            transitionAnimation = 'previewWipeIn 0.5s ease-in-out forwards, ';
+          }
+
           const animationStyle = isActive
-            ? `${isCyber ? '' : 'previewFadeIn 0.5s ease-out forwards, '}${kenBurnsAnimation} ${clipDuration}s linear forwards, previewDummy-${activeSubIndex} 0s`
+            ? `${transitionAnimation}${kenBurnsAnimation} ${clipDuration}s linear forwards, previewDummy-${activeSubIndex} 0s`
             : 'none';
 
           return (
