@@ -1007,7 +1007,7 @@ export default function EditorClient({ id }: EditorClientProps) {
                               <input 
                                 type="range"
                                 min="0.1"
-                                max="2.0"
+                                max="5.0"
                                 step="0.1"
                                 value={scene.transitionDuration ?? 0.5}
                                 onChange={(e) => handleTransitionChange(index, scene.transition!, parseFloat(e.target.value))}
@@ -1358,7 +1358,7 @@ export default function EditorClient({ id }: EditorClientProps) {
                               <input 
                                 type="range"
                                 min="0.1"
-                                max="2.0"
+                                max="5.0"
                                 step="0.1"
                                 value={scene.transitionDuration ?? 0.5}
                                 onChange={(e) => handleTransitionChange(index, scene.transition!, parseFloat(e.target.value))}
