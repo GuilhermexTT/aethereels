@@ -49,7 +49,8 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, styleCon
       text: String(sub.text || sub.word || ''),
       start,
       end,
-      transition: sub.transition || 'none'
+      transition: sub.transition || 'none',
+      transitionDuration: typeof sub.transitionDuration === 'number' ? sub.transitionDuration : 0.5
     };
   });
 
@@ -407,11 +408,12 @@ export default function PlayerWrapper({ audioUrl, videoUrls, subtitles, styleCon
               : 'previewKenBurns';
 
           const sceneTransition = normalizedSubtitles[idx]?.transition || 'none';
+          const transitionDuration = normalizedSubtitles[idx]?.transitionDuration ?? 0.5;
           let transitionAnimation = '';
           if (sceneTransition === 'fade') {
-            transitionAnimation = 'previewFadeIn 0.5s ease-out forwards, ';
+            transitionAnimation = `previewFadeIn ${transitionDuration}s ease-out forwards, `;
           } else if (sceneTransition === 'wipe') {
-            transitionAnimation = 'previewWipeIn 0.5s ease-in-out forwards, ';
+            transitionAnimation = `previewWipeIn ${transitionDuration}s ease-in-out forwards, `;
           }
 
           const animationStyle = isActive

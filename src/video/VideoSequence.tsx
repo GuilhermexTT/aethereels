@@ -13,15 +13,17 @@ const SceneItem: React.FC<{
   durationInFrames: number;
   style_config?: StyleConfig;
   transition?: 'none' | 'fade' | 'wipe';
-}> = ({ src, durationInFrames, style_config, transition = 'none' }) => {
+  transitionDuration?: number;
+}> = ({ src, durationInFrames, style_config, transition = 'none', transitionDuration = 0.5 }) => {
   const frame = useCurrentFrame();
 
   const safeDuration = isNaN(durationInFrames) || durationInFrames <= 0 ? 30 : durationInFrames;
+  const transitionFrames = Math.round(transitionDuration * 30);
 
   // Transição de Opacidade (Fade)
   let opacity = 1;
   if (transition === 'fade' && !isNaN(frame)) {
-    opacity = interpolate(frame, [0, Math.min(15, safeDuration)], [0, 1], {
+    opacity = interpolate(frame, [0, Math.min(transitionFrames, safeDuration)], [0, 1], {
       extrapolateLeft: 'clamp',
       extrapolateRight: 'clamp',
     });
@@ -30,7 +32,7 @@ const SceneItem: React.FC<{
   // Transição de Varredura (Wipe da direita para a esquerda)
   let clipPath = 'none';
   if (transition === 'wipe' && !isNaN(frame)) {
-    const wipeProgress = interpolate(frame, [0, Math.min(15, safeDuration)], [100, 0], {
+    const wipeProgress = interpolate(frame, [0, Math.min(transitionFrames, safeDuration)], [100, 0], {
       extrapolateLeft: 'clamp',
       extrapolateRight: 'clamp',
     });
@@ -123,6 +125,7 @@ export const VideoSequence: React.FC<VideoSequenceProps> = ({ video_urls, subtit
               durationInFrames={durationInFrames} 
               style_config={style_config} 
               transition={sub.transition}
+              transitionDuration={sub.transitionDuration}
             />
           </Sequence>
         );

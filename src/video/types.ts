@@ -7,6 +7,7 @@ export interface SubtitleItem {
   duration?: number;
   word?: string;
   transition?: 'none' | 'fade' | 'wipe';
+  transitionDuration?: number; // em segundos
 }
 
 export interface StyleConfig {
